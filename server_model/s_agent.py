@@ -262,24 +262,6 @@ class Human(mesa.Agent):
             self.velocity = v / vn
         return None
 
-    def add_road_density_number(self):
-        check = True
-        while check:
-            i = 0
-            while 1:
-                if i >= len(self.road_arr):
-                    check = False
-                    break
-                x1, y1 = self.road_arr[i]
-                x2, y2 = self.road_arr[i + 1]
-                if self.pos[0] >= x1 and self.pos[0] <= x2 and self.pos[1] >= y1 and self.pos[1] <= y2:
-                    self.road_density_number[int(i / 2) + 1][0] += 1
-                    return None
-                i += 2
-        print("x: " + str(self.pos[0]) + "y: " + str(self.pos[1]) +
-              "   ------------------------Error------------------")
-        return None
-
     def get_distance(pos_1, pos_2):
         x1, y1 = pos_1
         x2, y2 = pos_2
