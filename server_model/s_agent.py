@@ -186,71 +186,84 @@ class Human(mesa.Agent):
 
     def force_from_wall(self, wall_obj):
         fx, fy = 0., 0.
+        tmp_wall = np.array([22., 26.])
+        tmp_dis = self.space.get_distance(self.pos, tmp_wall)
+        if tmp_dis <= 1.5:  # 壁に対して右斜め上に垂直なとき
+            if type(wall_obj["right_wall"]) is Wall or type(wall_obj["upper_wall"]) is Wall:
+                None
+            else:
+                n_iw = (self.pos - tmp_wall) / tmp_dis
+                t_iw = [-n_iw[1], n_iw[0]]
+                dis = tmp_dis + 1.
+                tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
+                fx += tmp_fx
+                fy += tmp_fy
+
+        tmp_wall = np.array([16., 26.])  # 壁に対して左斜め上に垂直なとき
+        tmp_dis = self.space.get_distance(self.pos, tmp_wall)
+        if tmp_dis <= 1.5:
+            if type(wall_obj["left_wall"]) is Wall or type(wall_obj["upper_wall"]) is Wall:
+                None
+            else:
+                n_iw = (self.pos - tmp_wall) / tmp_dis
+                t_iw = [-n_iw[1], n_iw[0]]
+                dis = tmp_dis + 1.
+                tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
+                fx += tmp_fx
+                fy += tmp_fy
+
         if type(wall_obj["left_wall"]) is Wall:
             n_iw = [1., 0.]
             t_iw = [-n_iw[1], n_iw[0]]
             dis = self.hspecs.r - (self.pos[0] - wall_obj["left_wall"].pos[0])
             dis += wall_obj["left_wall"].wall_r
-            if dis >= 0:
-                fx += (self.hspecs.repul_m[0] * (math.e ** (dis / self.hspecs.repul_m[1])) + self.hspecs.k *
-                       dis) * n_iw[0] - self.hspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[0]
-                fy += (self.hspecs.repul_m[0] * (math.e ** (dis / self.hspecs.repul_m[1])) + self.hspecs.k *
-                       dis) * n_iw[1] - self.hspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[1]
-            else:
-                fx += (self.hspecs.repul_m[0] * (math.e **
-                       (dis / self.hspecs.repul_m[1]))) * n_iw[0]
-                fy += (self.hspecs.repul_m[0] * (math.e **
-                       (dis / self.hspecs.repul_m[1]))) * n_iw[1]
+            tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
+            fx += tmp_fx
+            fy += tmp_fy
             wall_obj["left_wall"] = 1.
         if type(wall_obj["right_wall"]) is Wall:
             n_iw = [-1., 0.]
             t_iw = [-n_iw[1], n_iw[0]]
             dis = self.hspecs.r - (wall_obj["right_wall"].pos[0] - self.pos[0])
             dis += wall_obj["right_wall"].wall_r
-            if dis >= 0:
-                fx += (self.hspecs.repul_m[0] * (math.e ** (dis / self.hspecs.repul_m[1])) + self.hspecs.k *
-                       dis) * n_iw[0] - self.hspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[0]
-                fy += (self.hspecs.repul_m[0] * (math.e ** (dis / self.hspecs.repul_m[1])) + self.hspecs.k *
-                       dis) * n_iw[1] - self.hspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[1]
-            else:
-                fx += (self.hspecs.repul_m[0] * (math.e **
-                       (dis / self.hspecs.repul_m[1]))) * n_iw[0]
-                fy += (self.hspecs.repul_m[0] * (math.e **
-                       (dis / self.hspecs.repul_m[1]))) * n_iw[1]
+            tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
+            fx += tmp_fx
+            fy += tmp_fy
             wall_obj["right_wall"] = 1.
         if type(wall_obj["upper_wall"]) is Wall:
             n_iw = [0., 1.]
             t_iw = [-n_iw[1], n_iw[0]]
             dis = self.hspecs.r - (self.pos[1] - wall_obj["upper_wall"].pos[1])
             dis += wall_obj["upper_wall"].wall_r
-            if dis >= 0:
-                fx += (self.hspecs.repul_m[0] * (math.e ** (dis / self.hspecs.repul_m[1])) + self.hspecs.k *
-                       dis) * n_iw[0] - self.hspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[0]
-                fy += (self.hspecs.repul_m[0] * (math.e ** (dis / self.hspecs.repul_m[1])) + self.hspecs.k *
-                       dis) * n_iw[1] - self.hspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[1]
-            else:
-                fx += (self.hspecs.repul_m[0] * (math.e **
-                       (dis / self.hspecs.repul_m[1]))) * n_iw[0]
-                fy += (self.hspecs.repul_m[0] * (math.e **
-                       (dis / self.hspecs.repul_m[1]))) * n_iw[1]
+            tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
+            fx += tmp_fx
+            fy += tmp_fy
             wall_obj["upper_wall"] = 1.
         if type(wall_obj["bottom_wall"]) is Wall:
             n_iw = [0., -1.]
             t_iw = [-n_iw[1], n_iw[0]]
             dis = self.hspecs.r - (wall_obj["bottom_wall"].pos[1] - self.pos[1])
             dis += wall_obj["bottom_wall"].wall_r
-            if dis >= 0:
-                fx += (self.hspecs.repul_m[0] * (math.e ** (dis / self.hspecs.repul_m[1])) + self.hspecs.k *
-                       dis) * n_iw[0] - self.hspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[0]
-                fy += (self.hspecs.repul_m[0] * (math.e ** (dis / self.hspecs.repul_m[1])) + self.hspecs.k *
-                       dis) * n_iw[1] - self.hspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[1]
-            else:
-                fx += (self.hspecs.repul_m[0] * (math.e **
-                       (dis / self.hspecs.repul_m[1]))) * n_iw[0]
-                fy += (self.hspecs.repul_m[0] * (math.e **
-                       (dis / self.hspecs.repul_m[1]))) * n_iw[1]
+            tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
+            fx += tmp_fx
+            fy += tmp_fy
             wall_obj["bottom_wall"] = 1.
         return fx, fy, wall_obj
+
+    def wall_force_core(self, dis, n_iw, t_iw):
+        fx, fy = 0., 0.
+        if dis >= 0:
+            fx += (self.hspecs.repul_m[0] * (math.e ** (dis / self.hspecs.repul_m[1])) + self.hspecs.k *
+                    dis) * n_iw[0] - self.hspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[0]
+            fy += (self.hspecs.repul_m[0] * (math.e ** (dis / self.hspecs.repul_m[1])) + self.hspecs.k *
+                    dis) * n_iw[1] - self.hspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[1]
+        else:
+            fx += (self.hspecs.repul_m[0] * (math.e **
+                    (dis / self.hspecs.repul_m[1]))) * n_iw[0]
+            fy += (self.hspecs.repul_m[0] * (math.e **
+                    (dis / self.hspecs.repul_m[1]))) * n_iw[1]
+        return fx, fy
+
 
     def _calculate(self):
         fx, fy = self._force(self.target)
@@ -345,6 +358,19 @@ class ForcefulHuman(Human):
 
         return fx, fy
 
+    def wall_force_core(self, dis, n_iw, t_iw):
+        fx, fy = 0., 0.
+        if dis >= 0:
+            fx += (self.fhspecs.repul_m[0] * (math.e ** (dis / self.fhspecs.repul_m[1])) + self.fhspecs.k *
+                    dis) * n_iw[0] - self.fhspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[0]
+            fy += (self.fhspecs.repul_m[0] * (math.e ** (dis / self.fhspecs.repul_m[1])) + self.fhspecs.k *
+                    dis) * n_iw[1] - self.fhspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[1]
+        else:
+            fx += (self.fhspecs.repul_m[0] * (math.e **
+                    (dis / self.fhspecs.repul_m[1]))) * n_iw[0]
+            fy += (self.fhspecs.repul_m[0] * (math.e **
+                    (dis / self.fhspecs.repul_m[1]))) * n_iw[1]
+        return fx, fy
 
 class Obstacle(mesa.Agent):
     def __init__(self, unique_id, model, pos, dir):
