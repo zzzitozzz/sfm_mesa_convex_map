@@ -79,19 +79,14 @@ class MoveAgent(mesa.Model):
         forceful_human_var_inst = ForcefulHumanSpecs(self.f_r, self.f_m, self.f_tau, self.f_k, self.f_kappa, self.f_repul_h, self.f_repul_m)
         return human_var_inst, forceful_human_var_inst
 
-
     def make_basic_dir(self):
         path = f"{self.add_file_name}/Data/"
         os.makedirs(path, exist_ok=True)
         with open(f"{path}nolmal.dat", "w") as f:
             f.write("evacuation_time\n")
-            # f.write("ini_pos_x: ini_pos_y: evacuation_time: max_population_density:nol:m:" + str(self.m) + "tau:" + str(self.tau) +
-            #         "k:" + str(self.k) + "kappa:" + str(self.kappa) + "repul_h:" + str(self.repul_h) + "repul_m" + str(self.repul_m) + "\n")
         os.makedirs(path, exist_ok=True)
         with open(f"{path}forceful.dat", "w") as f:
             f.write("evacuation_time\n")
-            # f.write("ini_pos_x: ini_pos_y: evacuation_time: max_population_density:for:m:" + str(self.f_m) + "tau:" + str(self.f_tau) +
-            #         "k:" + str(self.f_k) + "kappa:" + str(self.f_kappa) + "repul_h:" + str(self.f_repul_h) + "repul_m" + str(self.f_repul_m)+"\n")
         print(f"{self.add_file_name=}")
         self.ini_force_dataframe()
 
@@ -104,8 +99,6 @@ class MoveAgent(mesa.Model):
             }
             with open(f"{path}", "w") as f:
                 yaml.dump(data, f, sort_keys=False)
-
-
 
     def ini_force_dataframe(self):
         tmp_path = self.add_file_name.replace(f"/seed_{self.seed}", "")
@@ -132,13 +125,12 @@ class MoveAgent(mesa.Model):
             if tmp_forceful_num:  # 強引な人(強引な人の位置が先に決まったのち通常の避難者の位置が決まる)
                 velocity = self.decide_vel()
                 # pos, pos_array = self.decide_forceful_postion(pos_array)
-                # if self.for_population == 1:
-                #     pos = np.array((19., 36.))
-                #     pos_array.append(pos)
-                # else:
-                    # pos = self.decide_forceful_postion(human_array)
-                pos = self.decide_positon(human_array, i - tmp_id) #tmp
-                forceful_target = [154. + 100000., 9.]
+                if self.for_population == 1:
+                    pos = np.array((19., 36.))
+                    pos_array.append(pos)
+                else:
+                    pos = self.decide_forceful_postion(human_array)
+                forceful_target = [19., 14.]
                 target = forceful_target
                 human = ForcefulHuman(i, self, pos, velocity,
                                       target, tmp_div, human_var_inst,
@@ -165,39 +157,27 @@ class MoveAgent(mesa.Model):
 
     def decide_positon(self, human_array, i):
         while 1:
-            x = np.random.randint(4, 79) + np.random.rand()
-            y = np.random.randint(3, 15) + np.random.rand()
-            if 4. + self.r * 2 <= x <= 79. - self.r * 2 and 3. + self.r * 2 <= y <= 15. - self.r * 2:
+            x = np.random.randint(4, 34) + np.random.rand()
+            y = np.random.randint(26, 40) + np.random.rand()
+            if 4. + self.r * 2 <= x <= 34. - self.r * 2 and 26. + self.r * 2 <= y <= 40. - self.r * 2:
                 tmp_pos = np.array((x, y))
                 if self.human_pos_check(tmp_pos, human_array):
                     pos = tmp_pos
                     break
-            #visual_debag用
-            # x = 79
-            # y = 3
-            # y += i
-            # pos = np.array((x,y))
-            # x = 4
-            # y = 4
-            # x += i
-            # pos = np.array((x,y))
-            # print(f"{i=} {pos}")
-            # break
-            #visual_debag用
         return pos
 
-    # def decide_forceful_postion(self, human_array):
-    #     while 1:
-    #         x = np.random.randint(19.-self.len_sq, 19. +
-    #                               self.len_sq) + np.random.rand()
-    #         y = np.random.randint(32.5-self.len_sq, 32.5 +
-    #                               self.len_sq) + np.random.rand()
-    #         if 19.-self.len_sq + self.max_f_r <= x <= 19.+self.len_sq - self.max_f_r and 32.5-self.len_sq + self.max_f_r <= y <= 32.5+self.len_sq - self.max_f_r:
-    #             tmp_pos = np.array((x, y))
-    #             if self.forceful_human_pos_check(tmp_pos, human_array):
-    #                 pos = tmp_pos
-    #                 break
-    #     return pos
+    def decide_forceful_postion(self, human_array):
+        while 1:
+            x = np.random.randint(19.-self.len_sq, 19. +
+                                  self.len_sq) + np.random.rand()
+            y = np.random.randint(32.5-self.len_sq, 32.5 +
+                                  self.len_sq) + np.random.rand()
+            if 19.-self.len_sq + self.max_f_r <= x <= 19.+self.len_sq - self.max_f_r and 32.5-self.len_sq + self.max_f_r <= y <= 32.5+self.len_sq - self.max_f_r:
+                tmp_pos = np.array((x, y))
+                if self.forceful_human_pos_check(tmp_pos, human_array):
+                    pos = tmp_pos
+                    break
+        return pos
 
     def decide_vel(self):
         while 1:
@@ -209,90 +189,82 @@ class MoveAgent(mesa.Model):
         return velocity
 
     def decide_nolmal_target(self):
-        # while 1:
-            # y = np.random.randint(26, 40) + np.random.rand()
-            # if 26. + self.r <= y <= 40. - self.r:
-            #     nolmal_target = [54., y]
-            #     break
-        nolmal_target = [154.+ 100000.,9]
+        while 1:
+            y = np.random.randint(26, 40) + np.random.rand()
+            if 26. + self.r <= y <= 40. - self.r:
+                nolmal_target = [54., y]
+                break
         return nolmal_target
 
     def human_pos_check(self, tmp_pos, human_array):
         for hu in human_array:
             dis = self.space.get_distance(tmp_pos, hu.pos)
-            if dis < self.r + self.r:
-                return False
-            # if type(hu) is Human:   ##強引な避難者の大きさを変更したときの条件式
-            #     if dis < self.r + self.r:
-            #         return False
-            # elif type(hu) is ForcefulHuman:
-            #     if dis < self.r + self.max_f_r:
-            #         return False
+            if type(hu) is Human:   ##強引な避難者の大きさを変更したときの条件式
+                if dis < self.r + self.r:
+                    return False
+            elif type(hu) is ForcefulHuman:
+                if dis < self.r + self.max_f_r:
+                    return False
         return True
 
     def forceful_human_pos_check(self, tmp_pos, human_array):
         for hu in human_array:
-            # dis = self.space.get_distance(tmp_pos, hu.pos)
-            if dis < self.r + self.r:
-                return False
-            # if type(hu) is Human:　　##強引な避難者の大きさを変更したときの条件式
-            #     if dis < self.r + self.r:
-            #         return False
-            # if type(hu) is ForcefulHuman:
-            #     if dis < self.max_f_r + self.r:
-            #         return False
+            dis = self.space.get_distance(tmp_pos, hu.pos)
+            if type(hu) is Human: ##強引な避難者の大きさを変更したときの条件式
+                if dis < self.r + self.r:
+                    return False
+            if type(hu) is ForcefulHuman:
+                if dis < self.max_f_r + self.r:
+                    return False
         return True
 
     def generate_wall(self, id):  # 壁を作る
         i = 0
         while 1:
             if i >= len(self.wall_arr) - 1:
-                # print("i: " + str(i) + " len_self.wall_arr:" +
-                #   str(len(self.wall_arr)))
                 break
             tmp_wall_1 = self.wall_arr[i]
             tmp_wall_2 = self.wall_arr[i + 1]
             tmp_x, tmp_y = tmp_wall_1[0], tmp_wall_1[1]
-            # print("wall_1: " + str(tmp_wall_1) + " wall_2: " + str(tmp_wall_2))
             not_skip = 1
             if tmp_wall_1[2] == 0 or tmp_wall_1[2] == 2:
                 while 1:
                     if tmp_y >= tmp_wall_2[1]:
                         break
-                    # if i != 0:
-                    #     neighbors = self.space.get_neighbors(
-                    #         np.array((27., 20.)), 30, False)
-                    #     for neighbor in neighbors:
-                    #         if type(neighbor) is Wall:
-                    #             if tmp_x == neighbor.pos[0] and tmp_y == neighbor.pos[1]:
-                    #                 not_skip = 0
-                    #                 break
-                    # if not_skip:
-                    self.generate_block(tmp_x, tmp_y, id, tmp_wall_1[2])
-                    id += 1
-                    tmp_y += self.height * 0.001
-                    # else:
-                    #     not_skip = 1
-                    #     tmp_y += self.height * 0.001
+                    if i != 0:
+                        neighbors = self.space.get_neighbors(
+                            np.array((27., 20.)), 30, False)
+                        for neighbor in neighbors:
+                            if type(neighbor) is Wall:
+                                if tmp_x == neighbor.pos[0] and tmp_y == neighbor.pos[1]:
+                                    not_skip = 0
+                                    break
+                    if not_skip:
+                        self.generate_block(tmp_x, tmp_y, id, tmp_wall_1[2])
+                        id += 1
+                        tmp_y += self.height * 0.001
+                    else:
+                        not_skip = 1
+                        tmp_y += self.height * 0.001
             elif tmp_wall_1[2] == 1 or tmp_wall_1[2] == 3:
                 while 1:
                     if tmp_x >= tmp_wall_2[0]:
                         break
-                    # if i != 0:
-                    #     neighbors = self.space.get_neighbors(
-                    #         np.array((27., 20.)), 30, False)
-                    #     for neighbor in neighbors:
-                    #         if type(neighbor) is Wall:
-                    #             if tmp_x == neighbor.pos[0] and tmp_y == neighbor.pos[1]:
-                    #                 not_skip = 0
-                    #                 break
-                    # if not_skip:
-                    self.generate_block(tmp_x, tmp_y, id, tmp_wall_1[2])
-                    id += 1
-                    tmp_x += self.width * 0.001
-                    # else:
-                    #     not_skip = 1
-                    #     tmp_x += self.width * 0.001
+                    if i != 0:
+                        neighbors = self.space.get_neighbors(
+                            np.array((27., 20.)), 30, False)
+                        for neighbor in neighbors:
+                            if type(neighbor) is Wall:
+                                if tmp_x == neighbor.pos[0] and tmp_y == neighbor.pos[1]:
+                                    not_skip = 0
+                                    break
+                    if not_skip:
+                        self.generate_block(tmp_x, tmp_y, id, tmp_wall_1[2])
+                        id += 1
+                        tmp_x += self.width * 0.001
+                    else:
+                        not_skip = 1
+                        tmp_x += self.width * 0.001
             else:
                 print("generate_wall_error")
             i += 2
@@ -376,14 +348,14 @@ class MoveAgent(mesa.Model):
             open(f"{self.add_file_name}/Data/forceful.dat").readlines())
         if nolmal_num < self.population + 1:
             if forceful_num < self.for_population + 1:
-                with open(f"{self.add_file_name}/Data/""nolmal.dat", "a") as f:
+                with open(f"{self.add_file_name}/Data/nolmal.dat", "a") as f:
                     f.write(f"interrupt\n")
-                with open(f"{self.add_file_name}/Data/""forceful.dat", "a") as f:
+                with open(f"{self.add_file_name}/Data/forceful.dat", "a") as f:
                     f.write(f"interrupt\n")
             else:
-                with open(f"{self.add_file_name}/Data/""nolmal.dat", "a") as f:
+                with open(f"{self.add_file_name}/Data/nolmal.dat", "a") as f:
                     f.write(f"interrupt\n")
         else:
-            with open(f"{self.add_file_name}/Data/""forceful.dat", "a") as f:
+            with open(f"{self.add_file_name}/Data/forceful.dat", "a") as f:
                 f.write(f"interrupt\n")
 
