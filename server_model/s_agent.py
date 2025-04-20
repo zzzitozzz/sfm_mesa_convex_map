@@ -28,6 +28,7 @@ class Human(mesa.Agent):
                  target, tmp_div,
                  human_var_inst,
                  space, add_file_name,
+                 target_id=1,
                  tmp_pos=(0., 0.), pos_array=[],
                  in_goal=False,elapsed_time=0.,  # 経過時間
                  ):
@@ -39,6 +40,7 @@ class Human(mesa.Agent):
         self.target = target #避難所の座標
         self.space = space #エージェントが動き回る空間を管理するモジュール
         self.add_file_name = add_file_name #保存するファイル名(の基礎.最終的には絶対パスまたは相対パスができる)
+        self.target_id = target_id #避難所または中継地を指定するid
         self.tmp_pos = np.array((0., 0.)) #一時的に計算した結果の位置を保存する値(将来的には壁を乗り越えるなどのありえない挙動をした時に元の位置に戻すために一旦計算した位置を保存している)
         self.in_goal = in_goal #目的地に到着したか判定するboolean型の変数
         self.pos_array = [] #自分の位置をステップごとに記録する配列
@@ -46,12 +48,20 @@ class Human(mesa.Agent):
         self.elapsed_time = elapsed_time #経過時間
 
     def step(self):  # 次の位置を特定するための計算式を書く
-        self._calculate()
-        target_dis = abs(self.pos[0] - 154.)
-        self.goal_check(target_dis)
-        self.tmp_pos[0] = self.pos[0] + \
-            self.velocity[0] * self.hspecs.dt  # 仮の位置を計算
-        self.tmp_pos[1] = self.pos[1] + self.velocity[1] * self.hspecs.dt
+        self.target_update()
+        i = 5
+        while i:
+            self._calculate()
+            target_dis = abs(self.pos[0] - 54.)
+            self.goal_check(target_dis)
+            self.tmp_pos[0] = self.pos[0] + \
+                self.velocity[0] * self.hspecs.dt  # 仮の位置を計算
+            self.tmp_pos[1] = self.pos[1] + self.velocity[1] * self.hspecs.dt
+            if self.pos_check():
+                break
+            else:
+                i -= 1
+                self.reset_target()
         return None
 
     def advance(self):
@@ -69,11 +79,64 @@ class Human(mesa.Agent):
             self.model.space.move_agent(self, self.pos)  # goalしていない場合
         return None
 
+    def target_update(self):
+        if type(self) is Human:
+            if self.target_id == 1 and self.pos[1] < 26:
+                self.target_id = 0
+                self.target = self.model.target_arr[self.target_id][1]
+            elif self.target_id == 0:
+                tmp_y_dis = abs(self.pos[1]-self.target[1])
+                if tmp_y_dis < self.model.target_arr[self.target_id][2]:
+                    self.target_id = 1
+                    self.target = self.model.target_arr[self.target_id][1]
+            else:
+                None
+        elif type(self) is ForcefulHuman:
+            if self.target_id == 3 and self.pos[0] >= 22:
+                self.target_id = 2
+                self.target = self.model.target_arr[self.target_id][1]
+            elif self.target_id == 2:
+                tmp_x_dis = abs(self.pos[0]-self.target[0])
+                if tmp_x_dis < self.model.target_arr[self.target_id][2]:
+                    self.target_id = 3
+                    self.target = self.model.target_arr[self.target_id][1]
+            else:
+                None    
+
     def goal_check(self, target_dis):
         if target_dis < 0.5:
             self.in_goal = True
             self.velocity = [0.0, 0.0]
             return None
+
+    def reset_target(self):
+        if type(self) is Human:
+            if self.target_id == 1:  # 正常
+                while 1:
+                    y = np.random.randint(26, 40) + np.random.rand()
+                    if 26.5 <= y <= 39.5:
+                        break
+                self.target[1] = y
+            elif self.target_id == 0:  # 例外
+                while 1:
+                    x = np.random.randint(16, 22) + np.random.rand()
+                    if 16.5 <= x <= 21.5:
+                        break
+                self.target[0] = x
+        elif type(self) is ForcefulHuman:
+            if self.target_id == 3:  # 正常
+                while 1:
+                    x = np.random.randint(16, 22) + np.random.rand()
+                    if 16.5 <= x <= 21.5:
+                        break
+                self.target[0] = x
+            elif self.target_id == 2:  # 例外
+                while 1:
+                    y = np.random.randint(26, 40) + np.random.rand()
+                    if 26.5 <= y <= 39.5:
+                        break
+                self.target[1] = y
+        return None
 
     def make_dir(self, path):
         os.makedirs(f"{path}/Data", exist_ok=True)
@@ -156,7 +219,7 @@ class Human(mesa.Agent):
             fy += self.hspecs.repul_h[0] * (math.e **
                                      (dis / self.hspecs.repul_h[1])) * n_ij[1]
         return fx, fy
-
+    
     def force_from_forcefulhuman(self, neighbor):
         fx, fy = self.force_from_human(neighbor)
         return fx, fy
@@ -264,7 +327,6 @@ class Human(mesa.Agent):
                     (dis / self.hspecs.repul_m[1]))) * n_iw[1]
         return fx, fy
 
-
     def _calculate(self):
         fx, fy = self._force(self.target)
         self.velocity[0] += fx * self.hspecs.dt
@@ -274,6 +336,29 @@ class Human(mesa.Agent):
             vn = np.linalg.norm(v)
             self.velocity = v / vn
         return None
+    
+    def pos_check(self):
+        if type(self) is Human:
+            area = [[4., 26 + self.hspecs.r], [54., 40. - self.hspecs.r],
+                    [16. + self.hspecs.r, 4.], [22. - self.hspecs.r, 40. - self.hspecs.r]]
+        elif type(self) is ForcefulHuman:
+              area = [[4., 26 + self.fhspecs.r], [54., 40. - self.fhspecs.r],
+                    [16. + self.fhspecs.r, 4.], [22. - self.fhspecs.r, 40. - self.fhspecs.r]]          
+        area_check = False
+        i = 0
+        while 1:
+            if i >= len(area):
+                break
+            if area[i][0] <= self.tmp_pos[0] <= area[i + 1][0] and area[i][1] <= self.tmp_pos[1] <= area[i + 1][1]:
+                area_check = True
+                break
+            else:
+                i += 2
+        if area_check:
+            return True
+        else:
+            self.tmp_pos = copy.deepcopy(self.pos)
+            return False
 
     def get_distance(pos_1, pos_2):
         x1, y1 = pos_1
@@ -302,18 +387,53 @@ class ForcefulHuman(Human):
                  human_var_inst,
                  space, add_file_name,
                  forceful_human_var_inst,
+                 target_id=3,
                  tmp_pos=(0., 0.),
                  in_goal=False, pos_array=[],
                  elapsed_time=0.,  # 経過時間
+                 _force_mode = False,
                  ):
         super().__init__(unique_id, model, pos,
                          velocity, target,
                          tmp_div, human_var_inst,
                          space, add_file_name,
+                         target_id,
                          tmp_pos, in_goal,  pos_array,
                          elapsed_time,
                          )
         self.fhspecs = forceful_human_var_inst
+        self._force_mode = False
+
+    @property
+    def hspecs(self):
+        return self.fhspecs if self._force_mode else self.hspecs
+    
+    @property
+    def fmode(self):
+        return self._force_mode
+    
+    @fmode.setter
+    def fmode(self, val: bool):
+        self._force_mode = val
+
+    def step(self):  # 次の位置を特定するための計算式を書く
+        # 67step後(最大約20m進んだのち)にforcefulhumanに変化(naito 10step(20m))
+        self.target_update()
+        i = 5
+        while i:
+            self._calculate()
+            # target_dis = self.space.get_distance(self.pos, self.target)
+            target_dis = abs(self.pos[1] - 14.)
+            self.goal_check(target_dis)
+            self.tmp_pos[0] = self.pos[0] + \
+                self.velocity[0] * self.hspecs.dt  # 仮の位置を計算
+            self.tmp_pos[1] = self.pos[1] + self.velocity[1] * self.hspecs.dt
+            if self.pos_check():
+                break
+            else:
+                i -= 1
+                self.reset_target()
+        return None
 
     def write_record(self, path):
         if self.model.csv_plot:
@@ -335,7 +455,7 @@ class ForcefulHuman(Human):
         n_ij = (self.pos - neighbor.pos) / \
             self.space.get_distance(self.pos, neighbor.pos)
         t_ij = [-n_ij[1], n_ij[0]]
-        dis = (self.hvarsr + neighbor.fhvarsr) - \
+        dis = (self.hspecs.r + neighbor.fhspecs.r) - \
             self.space.get_distance(self.pos, neighbor.pos)
         if dis >= 0:
             tmp_x = (self.fhspecs.repul_h[0] * (math.e ** (dis / self.fhspecs.repul_h[1])) + self.fhspecs.k * dis) * \
@@ -371,6 +491,7 @@ class ForcefulHuman(Human):
             fy += (self.fhspecs.repul_m[0] * (math.e **
                     (dis / self.fhspecs.repul_m[1]))) * n_iw[1]
         return fx, fy
+
 
 class Obstacle(mesa.Agent):
     def __init__(self, unique_id, model, pos, dir):
