@@ -9,7 +9,7 @@ import math
 
 class HumanSpecs:
     "_hspecs: Human-related common specs set used in Human and ForcefulHuman"
-    def __init__(self, r, m, tau, k, kappa, repul_h, repul_m, dt, in_target_d, vision):
+    def __init__(self, r, m, tau, k, kappa, repul_h, repul_m, alpha, dt, in_target_d, vision):
         self.r = r
         self.m = m
         self.tau = tau
@@ -17,6 +17,7 @@ class HumanSpecs:
         self.kappa = kappa
         self.repul_h = repul_h
         self.repul_m = repul_m
+        self.alpha = alpha
         self.dt = dt
         self.in_target_d = in_target_d
         self.vision = vision
@@ -47,9 +48,9 @@ class Human(mesa.Agent):
         self.pos_array.append(self.pos)
         self.elapsed_time = elapsed_time #経過時間
 
-        @property
-        def hspecs(self):
-            return self._hspecs
+    @property
+    def hspecs(self):
+        return self._hspecs
         
     def step(self):  # 次の位置を特定するための計算式を書く
         self.target_update()
@@ -177,12 +178,11 @@ class Human(mesa.Agent):
         for neighbor in neighbors:
             if self.unique_id == neighbor.unique_id:
                 continue
-            if type(neighbor) is Human:
-                tmp_fx, tmp_fy = self.force_from_human(neighbor)
-                fx += tmp_fx
-                fy += tmp_fy
-            elif (type(neighbor) is ForcefulHuman):
-                tmp_fx, tmp_fy = self.force_from_forcefulhuman(neighbor)
+            if type(neighbor) is Human or type(neighbor) is ForcefulHuman:
+                if type(self) == type(neighbor):
+                    tmp_fx, tmp_fy = self.force_from_human(neighbor)
+                else:
+                    tmp_fx, tmp_fy = self.force_from_human_alpha(neighbor)
                 fx += tmp_fx
                 fy += tmp_fy
             elif type(neighbor) is Wall:
@@ -223,9 +223,29 @@ class Human(mesa.Agent):
             fy += self.hspecs.repul_h[0] * (math.e **
                                      (dis / self.hspecs.repul_h[1])) * n_ij[1]
         return fx, fy
-    
-    def force_from_forcefulhuman(self, neighbor):
-        fx, fy = self.force_from_human(neighbor)
+
+    def force_from_human_alpha(self, neighbor):
+        fx, fy = 0., 0.
+        tmp_A = self.hspecs.repul_h[0] * (1. + self.hspecs.alpha)
+        n_ij = (self.pos - neighbor.pos) / \
+            self.space.get_distance(self.pos, neighbor.pos)
+        t_ij = [-n_ij[1], n_ij[0]]
+        dis = (self.hspecs.r + neighbor.hspecs.r) - \
+            self.space.get_distance(self.pos, neighbor.pos)
+        if dis >= 0:
+            fx += (tmp_A * (math.e ** (dis / self.hspecs.repul_h[1])) + self.hspecs.k * dis) * \
+                n_ij[0] + self.hspecs.kappa * dis * \
+                np.dot(
+                (neighbor.velocity - self.velocity), t_ij)*t_ij[0]
+            fy += (tmp_A * (math.e ** (dis / self.hspecs.repul_h[1])) + self.hspecs.k * dis) * \
+                n_ij[1] + self.hspecs.kappa * dis * \
+                np.dot(
+                    (neighbor.velocity - self.velocity), t_ij)*t_ij[1]
+        else:
+            fx += tmp_A * (math.e **
+                                     (dis / self.hspecs.repul_h[1])) * n_ij[0]
+            fy += tmp_A * (math.e **
+                                     (dis / self.hspecs.repul_h[1])) * n_ij[1]
         return fx, fy
 
     def choose_wall(self, neighbor, wall_dis, wall_obj):
@@ -370,14 +390,15 @@ class Human(mesa.Agent):
 
 class ForcefulHumanSpecs:
     "fhspecs:ForcefulHuman-related specs set used in ForcefulHuman"
-    def __init__(self, f_r, f_m, f_tau, f_k, f_kappa, f_repul_h, f_repul_m):
+    def __init__(self, f_r, f_m, f_tau, f_k, f_kappa, f_repul_h, f_repul_m, alpha):
         self.r = f_r
         self.m = f_m
         self.tau = f_tau
         self.k = f_k
         self.kappa = f_kappa
         self.repul_h = f_repul_h
-        self.f_repul_m = f_repul_m
+        self.repul_m = f_repul_m
+        self.alpha = alpha
 
 
 class ForcefulHuman(Human):

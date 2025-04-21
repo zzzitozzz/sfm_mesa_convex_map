@@ -33,7 +33,7 @@ def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, fo
     # file_name_array = [  # Debug
     #     f"./data/test_{for_pop}_len_{int(len_sq)}_f_r_{int(f_r*10)}/", "_force_m_"]_
     file_name_array = [  # Debug
-        f"./refact_data4/", "_force_m_"]
+        f"./refact_data5/", "_force_m_"]
 
     # file_name_array = [
     #     f"/local_home/keito/test_{for_pop}/", "_force_m_"]
@@ -48,8 +48,8 @@ def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, fo
         wall_r=1.0,  # うそ壁の大きさß
         human_var=human_var,
         forceful_human_var=forceful_human_var,
-        width=200,  # 見かけの大きさ(マップ)
-        height=200,  # 見かけの大きさ(マップ)
+        width=60,  # 見かけの大きさ(マップ)
+        height=60,  # 見かけの大きさ(マップ)
         dt=0.3,
         in_target_d=3,
         vision=1.5,  # 10
@@ -70,19 +70,24 @@ if __name__ == '__main__':
     f_r = 0.5
     f_m = float(sys.argv[2]) # 強引な避難者の質量
     tmp_seed = int(sys.argv[3])  # seed値
+    alpha = 1.
     for_pop = 5  # 強引な避難者の人数 #tmp
     csv_plot = True  # csvファイル(各エージェントの動きの軌跡)を出力するかどうか
     len_sq = 3  # 長方形の一辺の長さはlen_sq*2
-    max_f_r = 1.01
+    # max_f_r = 1.01
+    max_f_r = 0.5
     human_var = {"m": 80., "tau": 0.5, "k": 120000., "kappa": 240000.,
-                 "repul_h": [2000., 0.08], "repul_m": [2000., 0.08]}
+                 "repul_h": [2000., 0.08], "repul_m": [2000., 0.08], "alpha": alpha}
     forceful_human_var = {"f_m": f_m, "f_tau": 0.5, "f_k": 120000.,
-                          "f_kappa": 240000., "f_repul_h": [2000., 0.08], "f_repul_m": [2000., 0.08]}
+                          "f_kappa": 240000., "f_repul_h": [2000., 0.08], "f_repul_m": [2000., 0.08], "f_alpha": -alpha}
 
-    wall_arr = [[4., 3., 3], [154., 3., 3],
-                [4., 15., 1], [154., 15., 1],
-                ]
-    target_arr = [[0, [154., 9], 2.]] #チェックポイントとゴール
+    wall_arr = [[4., 40., 1], [54., 40., 1],
+                [4., 26., 3], [16., 26., 3],
+                [22., 26., 3], [54., 26., 3],
+                [16., 4., 2], [16., 26., 2],
+                [22., 4., 0], [22., 26., 0]]
+    target_arr = [[0, [19., 32.5], 2.], [1, [54., 33.], 2],
+                  [2, [19., 32.5], 6.], [3, [19., 14.], 2.]]
     while 1:
         m = make_new_model_instance(
             human_var, forceful_human_var, wall_arr, pop_num, for_pop, target_arr, tmp_seed, len_sq, f_r, max_f_r, f_m, csv_plot)

@@ -69,14 +69,16 @@ class MoveAgent(mesa.Model):
         self.kappa = self.human_var["kappa"]
         self.repul_h = self.human_var["repul_h"]
         self.repul_m = self.human_var["repul_m"]
+        self.alpha = self.human_var["alpha"]
         self.f_m = self.forceful_human_var["f_m"]
         self.f_tau = self.forceful_human_var["f_tau"]
         self.f_k = self.forceful_human_var["f_k"]
         self.f_kappa = self.forceful_human_var["f_kappa"]
         self.f_repul_h = self.forceful_human_var["f_repul_h"]
         self.f_repul_m = self.forceful_human_var["f_repul_m"]
-        human_var_inst = HumanSpecs(self.r, self.m, self.tau, self.k, self.kappa, self.repul_h, self.repul_m, self.dt, self.in_target_d, self.vision)
-        forceful_human_var_inst = ForcefulHumanSpecs(self.f_r, self.f_m, self.f_tau, self.f_k, self.f_kappa, self.f_repul_h, self.f_repul_m)
+        self.f_alpha = self.forceful_human_var["f_alpha"]
+        human_var_inst = HumanSpecs(self.r, self.m, self.tau, self.k, self.kappa, self.repul_h, self.repul_m, self.alpha, self.dt, self.in_target_d, self.vision)
+        forceful_human_var_inst = ForcefulHumanSpecs(self.f_r, self.f_m, self.f_tau, self.f_k, self.f_kappa, self.f_repul_h, self.f_repul_m, self.f_alpha)
         return human_var_inst, forceful_human_var_inst
 
     def make_basic_dir(self):
