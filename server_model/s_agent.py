@@ -8,7 +8,7 @@ import math
 
 
 class HumanSpecs:
-    "hspecs: Human-related common specs set used in Human and ForcefulHuman"
+    "_hspecs: Human-related common specs set used in Human and ForcefulHuman"
     def __init__(self, r, m, tau, k, kappa, repul_h, repul_m, dt, in_target_d, vision):
         self.r = r
         self.m = m
@@ -35,7 +35,7 @@ class Human(mesa.Agent):
         super().__init__(unique_id, model)
         self.pos = np.array(pos)
         self.velocity = velocity
-        self.hspecs = human_var_inst
+        self._hspecs = human_var_inst
         self.tmp_div = tmp_div #特定の人同士の反発力の大きさを除算もしくは乗算する値
         self.target = target #避難所の座標
         self.space = space #エージェントが動き回る空間を管理するモジュール
@@ -47,6 +47,10 @@ class Human(mesa.Agent):
         self.pos_array.append(self.pos)
         self.elapsed_time = elapsed_time #経過時間
 
+        @property
+        def hspecs(self):
+            return self._hspecs
+        
     def step(self):  # 次の位置を特定するための計算式を書く
         self.target_update()
         i = 5
@@ -338,12 +342,8 @@ class Human(mesa.Agent):
         return None
     
     def pos_check(self):
-        if type(self) is Human:
-            area = [[4., 26 + self.hspecs.r], [54., 40. - self.hspecs.r],
-                    [16. + self.hspecs.r, 4.], [22. - self.hspecs.r, 40. - self.hspecs.r]]
-        elif type(self) is ForcefulHuman:
-              area = [[4., 26 + self.fhspecs.r], [54., 40. - self.fhspecs.r],
-                    [16. + self.fhspecs.r, 4.], [22. - self.fhspecs.r, 40. - self.fhspecs.r]]          
+        area = [[4., 26 + self.hspecs.r], [54., 40. - self.hspecs.r],
+                [16. + self.hspecs.r, 4.], [22. - self.hspecs.r, 40. - self.hspecs.r]]       
         area_check = False
         i = 0
         while 1:
@@ -402,11 +402,11 @@ class ForcefulHuman(Human):
                          elapsed_time,
                          )
         self.fhspecs = forceful_human_var_inst
-        self._force_mode = False
+        self._force_mode = True
 
     @property
     def hspecs(self):
-        return self.fhspecs if self._force_mode else self.hspecs
+        return self.fhspecs if self._force_mode else self._hspecs
     
     @property
     def fmode(self):
@@ -450,48 +450,6 @@ class ForcefulHuman(Human):
                       mode="a", header=False)
         return None
     
-    def force_from_forcefulhuman(self, neighbor):
-        fx, fy = 0., 0.
-        n_ij = (self.pos - neighbor.pos) / \
-            self.space.get_distance(self.pos, neighbor.pos)
-        t_ij = [-n_ij[1], n_ij[0]]
-        dis = (self.hspecs.r + neighbor.fhspecs.r) - \
-            self.space.get_distance(self.pos, neighbor.pos)
-        if dis >= 0:
-            tmp_x = (self.fhspecs.repul_h[0] * (math.e ** (dis / self.fhspecs.repul_h[1])) + self.fhspecs.k * dis) * \
-                n_ij[0] + self.fhspecs.kappa * dis * \
-                np.dot(
-                    (neighbor.velocity - self.velocity), t_ij)*t_ij[0]
-            tmp_y = (self.fhspecs.repul_h[0] * (math.e ** (dis / self.fhspecs.repul_h[1])) + self.fhspecs.k * dis) * \
-                n_ij[1] + self.fhspecs.kappa * dis * \
-                np.dot(
-                    (neighbor.velocity - self.velocity), t_ij)*t_ij[1]
-            fx += tmp_x / self.tmp_div
-            fy += tmp_y / self.tmp_div
-        else:
-            tmp_x = self.fhspecs.repul_h[0] * \
-                (math.e ** (dis / self.fhspecs.repul_h[1])) * n_ij[0]
-            tmp_y = self.fhspecs.repul_h[0] * \
-                (math.e ** (dis / self.fhspecs.repul_h[1])) * n_ij[1]
-            fx += tmp_x / self.tmp_div
-            fy += tmp_y / self.tmp_div
-
-        return fx, fy
-
-    def wall_force_core(self, dis, n_iw, t_iw):
-        fx, fy = 0., 0.
-        if dis >= 0:
-            fx += (self.fhspecs.repul_m[0] * (math.e ** (dis / self.fhspecs.repul_m[1])) + self.fhspecs.k *
-                    dis) * n_iw[0] - self.fhspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[0]
-            fy += (self.fhspecs.repul_m[0] * (math.e ** (dis / self.fhspecs.repul_m[1])) + self.fhspecs.k *
-                    dis) * n_iw[1] - self.fhspecs.kappa * dis * np.dot(self.velocity, t_iw) * t_iw[1]
-        else:
-            fx += (self.fhspecs.repul_m[0] * (math.e **
-                    (dis / self.fhspecs.repul_m[1]))) * n_iw[0]
-            fy += (self.fhspecs.repul_m[0] * (math.e **
-                    (dis / self.fhspecs.repul_m[1]))) * n_iw[1]
-        return fx, fy
-
 
 class Obstacle(mesa.Agent):
     def __init__(self, unique_id, model, pos, dir):
