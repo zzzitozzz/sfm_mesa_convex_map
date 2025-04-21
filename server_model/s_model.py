@@ -93,7 +93,7 @@ class MoveAgent(mesa.Model):
         self.ini_force_dataframe()
 
     def save_specs_to_file(self, human_specs, forceful_human_specs):
-        path = f"{self.add_file_name}/../tmp.yaml"
+        path = f"{self.add_file_name}/../humans_specs.yaml"
         if not os.path.exists(path):
             data = {
                 "human": vars(human_specs),
