@@ -2,6 +2,7 @@ import mesa
 import os
 import sys
 import warnings
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -93,9 +94,11 @@ class MoveAgent(mesa.Model):
         self.ini_force_dataframe()
 
     def save_specs_to_file(self, human_specs, forceful_human_specs):
-        path = f"{self.add_file_name}/../humans_specs.yaml"
+        path = f"{self.add_file_name}/../human_specs.yaml"
         if not os.path.exists(path):
+            run_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             data = {
+                "run_time" : run_time,
                 "human": vars(human_specs),
                 "forcefulhuman": vars(forceful_human_specs)
             }
