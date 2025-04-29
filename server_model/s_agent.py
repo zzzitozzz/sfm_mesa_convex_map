@@ -394,7 +394,7 @@ class Human(mesa.Agent):
 
 
 class ForcefulHumanSpecs:
-    "fhspecs:ForcefulHuman-related specs set used in ForcefulHuman"
+    "_fhspecs:ForcefulHuman-related specs set used in ForcefulHuman"
     def __init__(self, f_r, f_m, f_tau, f_k, f_kappa, f_repul_h, f_repul_m, alpha):
         self.r = f_r
         self.m = f_m
@@ -430,31 +430,12 @@ class ForcefulHuman(Human):
                          tmp_pos, in_goal,  pos_array,
                          elapsed_time,
                          )
-        self.fhspecs = forceful_human_var_inst
+        self._fhspecs = forceful_human_var_inst
         self._force_mode = True
 
     @property
     def hspecs(self):
-        if self.unique_id == 1:
-            # print(f"{self._force_mode}")
-            pass
-        # return self.fhspecs if self._force_mode else self._hspecs
-            # print(f"_force_mode={self._force_mode}, hspecs called")
-            if self._force_mode:
-                # print(f"Returning fhspecs: {self.fhspecs}")
-                return self.fhspecs
-            else:
-                # print(f"Returning _hspecs: {self._hspecs}")
-                return self._hspecs
-        if self._force_mode:
-            if self.unique_id == 1:
-                # print(f"fhspecs: {self._force_mode}")
-                pass
-            return self.fhspecs
-        else:
-            if self.unique_id == 1:
-                pass
-            return self._hspecs
+        return self._fhspecs if self._force_mode else self._hspecs
     
     @property
     def fmode(self):
