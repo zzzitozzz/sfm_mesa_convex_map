@@ -55,7 +55,7 @@ class MoveAgent(mesa.Model):
         self.running = True
         print(f"change para: {self.check_f_parameter()}")
         self.make_basic_dir()
-        self.save_specs_to_file(human_var_inst, forceful_human_var_inst)
+        self.save_specs_to_file(shared, human_var_inst, forceful_human_var_inst)
 
     def dir_parts(self):
         basic_file_name = f"{self.add_file_name_arr[0]}{self.population}{self.add_file_name_arr[1]}"
@@ -94,12 +94,13 @@ class MoveAgent(mesa.Model):
         print(f"{self.add_file_name=}")
         self.ini_force_dataframe()
 
-    def save_specs_to_file(self, human_specs, forceful_human_specs):
+    def save_specs_to_file(self, shared, human_specs, forceful_human_specs):
         path = f"{self.add_file_name}/../human_specs.yaml"
         if not os.path.exists(path):
             run_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             data = {
                 "run_time" : run_time,
+                "shared_val" : vars(shared),
                 "human": vars(human_specs),
                 "forcefulhuman": vars(forceful_human_specs)
             }
