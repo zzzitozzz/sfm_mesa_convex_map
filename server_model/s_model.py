@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from s_agent import Human, HumanSpecs, ForcefulHuman, ForcefulHumanSpecs, Wall
+from s_agent import SharedParams, Human, HumanSpecs, ForcefulHuman, ForcefulHumanSpecs, Wall
 warnings.simplefilter('ignore', UserWarning)
 
 
@@ -44,14 +44,14 @@ class MoveAgent(mesa.Model):
         self.f_r = f_r
         self.max_f_r = max_f_r
         self.csv_plot = csv_plot
-        human_var_inst, forceful_human_var_inst = self.assign_ini_human_and_forceful_human_var()
+        shared, human_var_inst, forceful_human_var_inst = self.assign_ini_human_and_forceful_human_var()
         self.dir_parts()
         # self.schedule = mesa.time.RandomActivation(self) #すべてのエージェントをランダムに呼び出し、各エージェントでstep()を一回呼ぶ。step()だけで変更を適用する
         # すべてのエージェントを順番に呼び出し、すべてのエージェントで順番にstep()を一回読んだ後、すべてのエージェントで順番にadvance()を一回呼ぶ。step()で変更を準備し、advance()で変更を適用する
         self.schedule = mesa.time.SimultaneousActivation(self)
         self.space = mesa.space.ContinuousSpace(width, height, True)
         np.random.seed(self.seed)
-        self.make_agents(human_var_inst, human_var_inst)
+        self.make_agents(shared, human_var_inst, forceful_human_var_inst)
         self.running = True
         print(f"change para: {self.check_f_parameter()}")
         self.make_basic_dir()
@@ -78,9 +78,10 @@ class MoveAgent(mesa.Model):
         self.f_repul_h = self.forceful_human_var["f_repul_h"]
         self.f_repul_m = self.forceful_human_var["f_repul_m"]
         self.f_alpha = self.forceful_human_var["f_alpha"]
-        human_var_inst = HumanSpecs(self.r, self.m, self.tau, self.k, self.kappa, self.repul_h, self.repul_m, self.alpha, self.dt, self.in_target_d, self.vision)
+        shared = SharedParams(self.in_target_d, self.vision, self.dt)
+        human_var_inst = HumanSpecs(self.r, self.m, self.tau, self.k, self.kappa, self.repul_h, self.repul_m, self.alpha)
         forceful_human_var_inst = ForcefulHumanSpecs(self.f_r, self.f_m, self.f_tau, self.f_k, self.f_kappa, self.f_repul_h, self.f_repul_m, self.f_alpha)
-        return human_var_inst, forceful_human_var_inst
+        return shared, human_var_inst, forceful_human_var_inst
 
     def make_basic_dir(self):
         path = f"{self.add_file_name}/Data/"
@@ -114,12 +115,12 @@ class MoveAgent(mesa.Model):
                 columns=["m", "nol_pop", "seed", "id", "evacuation_time"])
             df.to_csv(f"{tmp_path}/forceful_time.csv", index=False)
 
-    def make_agents(self, human_var_inst, forceful_human_var_inst):
+    def make_agents(self, shared, human_var_inst, forceful_human_var_inst):
         tmp_id = 0
-        tmp_id = self.generate_human(tmp_id, human_var_inst, forceful_human_var_inst)
+        tmp_id = self.generate_human(tmp_id, shared, human_var_inst, forceful_human_var_inst)
         self.generate_wall(tmp_id)
 
-    def generate_human(self, tmp_id, human_var_inst, forceful_human_var_inst):
+    def generate_human(self, tmp_id, shared, human_var_inst, forceful_human_var_inst):
         tmp_div = 1.
         pos_array = []
         human_array = []
@@ -138,7 +139,8 @@ class MoveAgent(mesa.Model):
                 forceful_target = [19., 14.]
                 target = forceful_target
                 human = ForcefulHuman(i, self, pos, velocity,
-                                      target, tmp_div, human_var_inst,
+                                      target, tmp_div, shared,
+                                      human_var_inst,
                                       self.space, self.add_file_name,
                                       forceful_human_var_inst,
                                       )
@@ -152,6 +154,7 @@ class MoveAgent(mesa.Model):
                 nolmal_target = self.decide_nolmal_target()
                 target = nolmal_target
                 human = Human(i, self, pos, velocity, target, tmp_div,
+                              shared,
                               human_var_inst, self.space,
                               self.add_file_name,)
                 self.space.place_agent(human, pos)

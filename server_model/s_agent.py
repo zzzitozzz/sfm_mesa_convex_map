@@ -6,10 +6,16 @@ import numpy as np
 import pandas as pd
 import math
 
+class SharedParams:
+    "_shared: Common human-related parameters shared between Human and ForcefulHuman instances."
+    def __init__(self, in_target_d, vision, dt):
+        self.in_target_d = in_target_d
+        self.vision = vision
+        self.dt = dt
 
 class HumanSpecs:
-    "_hspecs: Human-related common specs set used in Human and ForcefulHuman"
-    def __init__(self, r, m, tau, k, kappa, repul_h, repul_m, alpha, dt, in_target_d, vision):
+    "_hspecs: Human-related common specs set used in Human (and ForcefulHuman)"
+    def __init__(self, r, m, tau, k, kappa, repul_h, repul_m, alpha):
         self.r = r
         self.m = m
         self.tau = tau
@@ -18,15 +24,13 @@ class HumanSpecs:
         self.repul_h = repul_h
         self.repul_m = repul_m
         self.alpha = alpha
-        self.dt = dt
-        self.in_target_d = in_target_d
-        self.vision = vision
 
 
 class Human(mesa.Agent):
     def __init__(self, unique_id, model,
                  pos, velocity,
                  target, tmp_div,
+                 shared,
                  human_var_inst,
                  space, add_file_name,
                  target_id=1,
@@ -36,6 +40,7 @@ class Human(mesa.Agent):
         super().__init__(unique_id, model)
         self.pos = np.array(pos)
         self.velocity = velocity
+        self._shared = shared
         self._hspecs = human_var_inst
         self.tmp_div = tmp_div #特定の人同士の反発力の大きさを除算もしくは乗算する値
         self.target = target #避難所の座標
@@ -60,8 +65,8 @@ class Human(mesa.Agent):
             target_dis = abs(self.pos[0] - 54.)
             self.goal_check(target_dis)
             self.tmp_pos[0] = self.pos[0] + \
-                self.velocity[0] * self.hspecs.dt  # 仮の位置を計算
-            self.tmp_pos[1] = self.pos[1] + self.velocity[1] * self.hspecs.dt
+                self.velocity[0] * self._shared.dt  # 仮の位置を計算
+            self.tmp_pos[1] = self.pos[1] + self.velocity[1] * self._shared.dt
             if self.pos_check():
                 break
             else:
@@ -72,7 +77,7 @@ class Human(mesa.Agent):
     def advance(self):
         self.pos = copy.deepcopy(self.tmp_pos)
         self.pos_array.append(self.pos)
-        self.elapsed_time += self.hspecs.dt
+        self.elapsed_time += self._shared.dt
         if (self.in_goal):  # goalした場合
             path = self.add_file_name
             self.make_dir(path)
@@ -168,7 +173,7 @@ class Human(mesa.Agent):
         fx, fy = 0., 0.
         theta = self._sincos(target)
         neighbors = self.model.space.get_neighbors(
-            self.pos, self.hspecs.vision, False)
+            self.pos, self._shared.vision, False)
         fx, fy = self.force_from_goal(theta)
         wall_dis = {"left_wall_dis": 1000., "right_wall_dis": 1000.,
                     "upper_wall_dis": 1000., "bottom_wall_dis": 1000.}
@@ -353,8 +358,8 @@ class Human(mesa.Agent):
 
     def _calculate(self):
         fx, fy = self._force(self.target)
-        self.velocity[0] += fx * self.hspecs.dt
-        self.velocity[1] += fy * self.hspecs.dt
+        self.velocity[0] += fx * self._shared.dt
+        self.velocity[1] += fy * self._shared.dt
         if (np.linalg.norm(self.velocity, 2) > 1.):  # review
             v = copy.deepcopy(self.velocity)
             vn = np.linalg.norm(v)
@@ -405,6 +410,7 @@ class ForcefulHuman(Human):
     def __init__(self, unique_id, model,
                  pos, velocity,
                  target, tmp_div,
+                 shared,
                  human_var_inst,
                  space, add_file_name,
                  forceful_human_var_inst,
@@ -416,7 +422,9 @@ class ForcefulHuman(Human):
                  ):
         super().__init__(unique_id, model, pos,
                          velocity, target,
-                         tmp_div, human_var_inst,
+                         tmp_div, 
+                         shared,
+                         human_var_inst,
                          space, add_file_name,
                          target_id,
                          tmp_pos, in_goal,  pos_array,
@@ -427,7 +435,26 @@ class ForcefulHuman(Human):
 
     @property
     def hspecs(self):
-        return self.fhspecs if self._force_mode else self._hspecs
+        if self.unique_id == 1:
+            # print(f"{self._force_mode}")
+            pass
+        # return self.fhspecs if self._force_mode else self._hspecs
+            # print(f"_force_mode={self._force_mode}, hspecs called")
+            if self._force_mode:
+                # print(f"Returning fhspecs: {self.fhspecs}")
+                return self.fhspecs
+            else:
+                # print(f"Returning _hspecs: {self._hspecs}")
+                return self._hspecs
+        if self._force_mode:
+            if self.unique_id == 1:
+                # print(f"fhspecs: {self._force_mode}")
+                pass
+            return self.fhspecs
+        else:
+            if self.unique_id == 1:
+                pass
+            return self._hspecs
     
     @property
     def fmode(self):
@@ -447,8 +474,8 @@ class ForcefulHuman(Human):
             target_dis = abs(self.pos[1] - 14.)
             self.goal_check(target_dis)
             self.tmp_pos[0] = self.pos[0] + \
-                self.velocity[0] * self.hspecs.dt  # 仮の位置を計算
-            self.tmp_pos[1] = self.pos[1] + self.velocity[1] * self.hspecs.dt
+                self.velocity[0] * self._shared.dt  # 仮の位置を計算
+            self.tmp_pos[1] = self.pos[1] + self.velocity[1] * self._shared.dt
             if self.pos_check():
                 break
             else:

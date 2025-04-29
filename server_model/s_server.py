@@ -4,7 +4,7 @@ from s_model import MoveAgent
 
 def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, for_pop, target_arr, tmp_seed, len_sq, f_r, max_f_r, f_m, csv_plot):
     # ex_num = 11 #len_sq ex11
-    # ex_num = 2 #f_r, f_repul
+    # ex_num = 2 #f_r, f_repul: f_repulは5かも？
     ex_num = 1
     # if for_pop == 1:
     #     if csv_plot:
@@ -32,6 +32,14 @@ def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, fo
     #     f"./data/test/ex{ex_num}_convex_for_{for_pop}_len_{len_sq}_f_r_{int(f_r*10)}_f_m_{int(f_m)}/", "_force_m_"]
     # file_name_array = [  # Debug
     #     f"./data/test_{for_pop}_len_{int(len_sq)}_f_r_{int(f_r*10)}/", "_force_m_"]_
+
+    if csv_plot:
+        file_name_array = [
+            f"/local_home/keito/simple_convex_map/agst_dir/refact_repul/ex{ex_num}_for_{for_pop}_len_{int(len_sq)}_refact_csv/", "_force_m_"]
+    else:
+        file_name_array = [
+            f"/local_home/keito/simple_convex_map/agst_dir/refact_repul/ex{ex_num}_for_{for_pop}_len_{int(len_sq)}_refact/", "_force_m_"]
+        
     file_name_array = [  # Debug
         f"./refact_data5/", "_force_m_"]
 
@@ -67,10 +75,11 @@ if __name__ == '__main__':
     pop_num = int(sys.argv[1])  # 通常の人数
     # f_m = float(sys.argv[2])  # 強引な避難者の質量
     # f_r = float(sys.argv[2])  # 強引な避難者の半径(接触範囲の増加)
-    f_r = 0.5
-    f_m = float(sys.argv[2]) # 強引な避難者の質量
+    # f_m = float(sys.argv[2]) # 強引な避難者の質量
+    alpha = float(sys.argv[2]) #特殊ケース:通常の避難者と強引な避難者を対象にした反発力計算をするときのみ，その反発力を(1+alpha or 1-alpha)する
     tmp_seed = int(sys.argv[3])  # seed値
-    alpha = 1.
+    f_r = 0.5
+    f_m = 80.
     for_pop = 5  # 強引な避難者の人数 #tmp
     csv_plot = True  # csvファイル(各エージェントの動きの軌跡)を出力するかどうか
     len_sq = 3  # 長方形の一辺の長さはlen_sq*2
@@ -78,7 +87,7 @@ if __name__ == '__main__':
     max_f_r = 0.5
     human_var = {"m": 80., "tau": 0.5, "k": 120000., "kappa": 240000.,
                  "repul_h": [2000., 0.08], "repul_m": [2000., 0.08], "alpha": alpha}
-    forceful_human_var = {"f_m": f_m, "f_tau": 0.5, "f_k": 120000.,
+    forceful_human_var = {"f_m": 80., "f_tau": 0.5, "f_k": 120000.,
                           "f_kappa": 240000., "f_repul_h": [2000., 0.08], "f_repul_m": [2000., 0.08], "f_alpha": -alpha}
 
     wall_arr = [[4., 40., 1], [54., 40., 1],
