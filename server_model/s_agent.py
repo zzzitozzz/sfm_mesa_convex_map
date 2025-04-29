@@ -476,7 +476,7 @@ class ForcefulHuman(Human):
             df = pd.DataFrame({"m": [self.hspecs.m], "nol_pop": [self.model.population], "seed": [
                 self.model.seed], "id": [self.unique_id], "elapsed_time": [self.elapsed_time]})
             df.to_csv(f"{path}/forceful_time.csv",
-                      mode="a", header=False)
+                      mode="a", header=False, index = False)
         return None
     
 
