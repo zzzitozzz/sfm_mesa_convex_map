@@ -29,7 +29,7 @@ class MoveAgent(mesa.Model):
         self.v_arg = v_arg
         self.wall_arr = wall_arr
         ####
-        self.wall_a, self.wall_b, self.wall_ab = self.pre_wall_arr()
+        self.wall_a, self.wall_b, self.wall_ab, self.wall_ab_len2 = self.pre_wall_arr()
         ####
         self.seed = seed
         self.r = r
@@ -230,10 +230,13 @@ class MoveAgent(mesa.Model):
         return True
     
     def pre_wall_arr(self):
-        wall_a = self.wall_arr[:, 0, :]           # 各壁の始点 (N_wall, 2)
-        wall_b = self.wall_arr[:, 1, :]           # 各壁の終点 (N_wall, 2)
+        wall_a = self.wall_arr[:, 0]           # 各壁の始点 (N_wall, 2)
+        wall_b = self.wall_arr[:, 1]           # 各壁の終点 (N_wall, 2)
         wall_ab = wall_b - wall_a         # ベクトル (N_wall, 2)
-        return wall_a, wall_b, wall_ab
+        wall_ab_len2 = np.array([])
+        for ab in wall_ab:
+            wall_ab_len2 = np.append(wall_ab_len2, np.dot(ab, ab))
+        return wall_a, wall_b, wall_ab, wall_ab_len2
 
     # def generate_wall(self, id):  # 壁を作る
     #     i = 0

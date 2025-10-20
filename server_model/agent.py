@@ -222,82 +222,41 @@ class Human(mesa.Agent):
     def force_from_wall(self):
         fx, fy = 0., 0.
         for i in range(len(self.model.wall_ab)):
-            tmp_vec = self.pos - self.model.wall_a[i][:2]
-            cross = np.abs(np.cross(self.model.wall_ab[i][:2], tmp_vec))
-            dis = cross / np.linalg.norm(self.model.wall_ab[i][:2])
+            dis, n_iw = self.distance_point_to_segment(i)
             if dis < self._shared.vision:
-                if self.wall_proj_valid(i, tmp_vec, dis): #tmp dis
-                    fx, fy = self.calc_wall_force(i, dis, fx, fy)
-                    # if self.unique_id == 2:
-                    #     print(f"{self.elapsed_time=} wall_force: {fx=},{fy=}")
-        return fx, fy
-    
-    def wall_proj_valid(self, i,  tmp_vec, dis):
-        t = np.dot(tmp_vec, self.model.wall_ab[i][:2]) / np.dot(self.model.wall_ab[i][:2], self.model.wall_ab[i][:2])
-        if self.unique_id == 2 and all(self.model.wall_a[i][:2] == [22., 26.]):
-            print(f"{self.pos=} {self.elapsed_time=} \n{t=} {tmp_vec=} {self.model.wall_ab[i][:2]=} {dis=}")
-
-        # if self.unique_id == 3:
-        #     diag = self.diagnose_t(i) #debug用
-        #     if all(self.model.wall_a[i][:2] == [22., 26.]) and all(self.model.wall_b[i][:2] == [54., 26.]):
-        #         print(f"壁1: {diag=}")
-        #     elif all(self.model.wall_a[i][:2] == [22., 4.]) and all(self.model.wall_b[i][:2] == [22., 26.]):
-        #         print(f"壁2: {diag=}")
-        return 0. <= t <= 1. #boolean型
-
-    # def diagnose_t(self, i): #debug用
-    #     a = np.asarray(self.model.wall_a[i][:2], dtype=float)
-    #     b = np.asarray(self.model.wall_b[i][:2], dtype=float)
-    #     pos = np.asarray(self.pos, dtype=float)
-    #     d = b - a
-    #     denom = np.dot(d, d)
-    #     t = np.dot(pos - a, d) / denom
-    #     proj = a + t * d
-    #     dist_proj_to_segment = np.linalg.norm(pos - proj)
-    #     dist_to_A = np.linalg.norm(pos - a)
-    #     dist_to_B = np.linalg.norm(pos - b)
-    #     # 距離比（端点からの距離をAB長で正規化）
-    #     ab_len = np.sqrt(denom)
-    #     return {
-    #         "t": t,
-    #         "proj": proj,
-    #         "dist_proj_to_pos": dist_proj_to_segment,
-    #         "dist_to_A": dist_to_A,
-    #         "dist_to_B": dist_to_B,
-    #         "ab_len": ab_len,
-    #         "proj_rel_A": np.dot(proj - a, d) / denom  # should equal t
-    #     }
-
-    def calc_wall_force(self,i, dis, fx, fy):
-        if self.model.wall_a[i][2] == 0: #0:(避難者から見た壁の位置が)上
-            if self.pos[1] > self.model.wall_a[i][1]: 
-                n_iw = [0., -1.]
-                t_iw = [-n_iw[1], n_iw[0]]
-                tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
-                fx += tmp_fx
-                fy += tmp_fy
-        elif self.model.wall_a[i][2] == 1: #1:下
-            if self.pos[1] <  self.model.wall_a[i][1]: 
-                n_iw = [0., 1.]
-                t_iw = [-n_iw[1], n_iw[0]]
-                tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
-                fx += tmp_fx
-                fy += tmp_fy
-        elif self.model.wall_a[i][2] == 2: #2:左
-            if self.pos[0] > self.model.wall_a[i][0]:
-                n_iw = [1., 0.]
-                t_iw = [-n_iw[1], n_iw[0]]
-                tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
-                fx += tmp_fx
-                fy += tmp_fy
-        elif self.model.wall_a[i][2] == 3: #3:右
-            if self.pos[0] < self.model.wall_a[i][0]:
-                n_iw = [-1., 0.]
-                t_iw = [-n_iw[1], n_iw[0]]
+                t_iw = np.array([-n_iw[1], n_iw[0]])
                 tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
                 fx += tmp_fx
                 fy += tmp_fy
         return fx, fy
+
+    def distance_point_to_segment(self, i):
+        a = self.model.wall_a[i][:2]
+        ab = self.model.wall_ab[i][:2]
+        ap = self.pos - a
+        ab_len2 = self.model.wall_ab_len2[i]
+
+        if ab_len2 == 0: #壁の両端の座標が同じ場合
+            vec = self.pos - a
+            dis = np.linalg.norm(vec)
+            n_iw = vec / dis if dis > 1e-8 else np.array([0., 0.])
+            return dis, n_iw
+        
+        t = np.dot(ap, ab) / ab_len2 
+        if t < 0.0:
+            closest = self.model.wall_a[i][:2]
+        elif t > 1.0:
+            closest = self.model.wall_b[i][:2]
+        else:
+            closest = self.model.wall_a[i][:2] + t * ab
+
+        vec = self.pos - closest
+        dis = np.linalg.norm(vec)
+        if dis > 1e-8:
+            n_iw = vec / dis
+        else:
+            n_iw = np.array([0., 0.])
+        return dis, n_iw
     
     def wall_force_core(self, dis, n_iw, t_iw):
         fx, fy = 0., 0.
