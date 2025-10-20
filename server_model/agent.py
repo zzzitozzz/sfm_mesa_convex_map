@@ -56,7 +56,6 @@ class Human(mesa.Agent):
     def hspecs(self):
         return self._hspecs
     
- 
     def step(self):  # 次の位置を特定するための計算式を書く
         self.target_update()
         i = 5
@@ -169,7 +168,6 @@ class Human(mesa.Agent):
         cos = (x2[0] - self.pos[0]) / r_0
         return cos, sin
 
-
     def _force(self, target):
         fx, fy = 0., 0.
         theta = self._sincos(target)
@@ -228,19 +226,24 @@ class Human(mesa.Agent):
             cross = np.abs(np.cross(self.model.wall_ab[i][:2], tmp_vec))
             dis = cross / np.linalg.norm(self.model.wall_ab[i][:2])
             if dis < self._shared.vision:
-                if self.wall_proj_valid(i, tmp_vec):
+                if self.wall_proj_valid(i, tmp_vec, dis): #tmp dis
                     fx, fy = self.calc_wall_force(i, dis, fx, fy)
+                    # if self.unique_id == 2:
+                    #     print(f"{self.elapsed_time=} wall_force: {fx=},{fy=}")
         return fx, fy
     
-    def wall_proj_valid(self, i,  tmp_vec):
+    def wall_proj_valid(self, i,  tmp_vec, dis):
         t = np.dot(tmp_vec, self.model.wall_ab[i][:2]) / np.dot(self.model.wall_ab[i][:2], self.model.wall_ab[i][:2])
+        if self.unique_id == 2 and all(self.model.wall_a[i][:2] == [22., 26.]):
+            print(f"{self.pos=} {self.elapsed_time=} \n{t=} {tmp_vec=} {self.model.wall_ab[i][:2]=} {dis=}")
+
         # if self.unique_id == 3:
         #     diag = self.diagnose_t(i) #debug用
         #     if all(self.model.wall_a[i][:2] == [22., 26.]) and all(self.model.wall_b[i][:2] == [54., 26.]):
         #         print(f"壁1: {diag=}")
         #     elif all(self.model.wall_a[i][:2] == [22., 4.]) and all(self.model.wall_b[i][:2] == [22., 26.]):
         #         print(f"壁2: {diag=}")
-        return 0 - 0.03 <= t <= 1 + 0.03 #boolean型
+        return 0. <= t <= 1. #boolean型
 
     # def diagnose_t(self, i): #debug用
     #     a = np.asarray(self.model.wall_a[i][:2], dtype=float)
@@ -296,7 +299,6 @@ class Human(mesa.Agent):
                 fy += tmp_fy
         return fx, fy
     
-
     def wall_force_core(self, dis, n_iw, t_iw):
         fx, fy = 0., 0.
         if dis >= 0:
@@ -319,6 +321,8 @@ class Human(mesa.Agent):
             v = copy.deepcopy(self.velocity)
             vn = np.linalg.norm(v)
             self.velocity = v / vn
+        # if self.unique_id == 2:
+        #     print(f"{self.pos=},{self.velocity=}\n{fx=},{fy=}")
         return None
     
     def pos_check(self):
