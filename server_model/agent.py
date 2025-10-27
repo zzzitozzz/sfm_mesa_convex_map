@@ -15,7 +15,7 @@ class SharedParams:
 
 class HumanSpecs:
     "_hspecs: Human-related common specs set used in Human (and ForcefulHuman)"
-    def __init__(self, r, m, tau, k, kappa, repul_h, repul_m, alpha):
+    def __init__(self, r, m, tau, k, kappa, repul_h, repul_m): 
         self.r = r
         self.m = m
         self.tau = tau
@@ -23,7 +23,6 @@ class HumanSpecs:
         self.kappa = kappa
         self.repul_h = repul_h
         self.repul_m = repul_m
-        self.alpha = alpha
 
 
 class Human(mesa.Agent):
@@ -56,7 +55,7 @@ class Human(mesa.Agent):
     @property
     def hspecs(self):
         return self._hspecs
-        
+    
     def step(self):  # 次の位置を特定するための計算式を書く
         self.target_update()
         i = 5
@@ -156,11 +155,11 @@ class Human(mesa.Agent):
 
     def write_record(self, path):
         if self.model.csv_plot:
-            np.savetxt(f"{path}/csv/id{self.unique_id}_nolmal"
+            np.savetxt(f"{path}/csv/id{self.unique_id}_normal"
                        f".csv", self.pos_array, delimiter=",")
         if self.in_goal:
             with open(f"{self.add_file_name}/Data/"
-                      f"nolmal.dat", "a") as f:
+                      f"normal.dat", "a") as f:
                 f.write(f"{self.elapsed_time} \n")
 
     def _sincos(self, x2):
@@ -175,26 +174,17 @@ class Human(mesa.Agent):
         neighbors = self.model.space.get_neighbors(
             self.pos, self._shared.vision, False)
         fx, fy = self.force_from_goal(theta)
-        wall_dis = {"left_wall_dis": 1000., "right_wall_dis": 1000.,
-                    "upper_wall_dis": 1000., "bottom_wall_dis": 1000.}
-        wall_obj = {"left_wall": 1., "right_wall": 1.,
-                    "upper_wall": 1., "bottom_wall": 1.}
-
         for neighbor in neighbors:
             if self.unique_id == neighbor.unique_id:
                 continue
             if type(neighbor) is Human or type(neighbor) is ForcefulHuman:
-                if type(self) == type(neighbor):
-                    tmp_fx, tmp_fy = self.force_from_human(neighbor)
-                else:
-                    tmp_fx, tmp_fy = self.force_from_human_alpha(neighbor)
+                tmp_fx, tmp_fy = self.force_from_human(neighbor)
                 fx += tmp_fx
                 fy += tmp_fy
             elif type(neighbor) is Wall:
-                wall_dis, wall_obj = self.choose_wall(neighbor,
-                                                      wall_dis, wall_obj)
+                None
         tmp_fx, tmp_fy = 0., 0.
-        tmp_fx, tmp_fy, wall_obj = self.force_from_wall(wall_obj)
+        tmp_fx, tmp_fy = self.force_from_wall()
         fx += tmp_fx
         fy += tmp_fy
         fx /= self.hspecs.m
@@ -229,119 +219,45 @@ class Human(mesa.Agent):
                                      (dis / self.hspecs.repul_h[1])) * n_ij[1]
         return fx, fy
 
-    def force_from_human_alpha(self, neighbor):
+    def force_from_wall(self):
         fx, fy = 0., 0.
-        tmp_A = self.hspecs.repul_h[0] * (1. + self.hspecs.alpha)
-        n_ij = (self.pos - neighbor.pos) / \
-            self.space.get_distance(self.pos, neighbor.pos)
-        t_ij = [-n_ij[1], n_ij[0]]
-        dis = (self.hspecs.r + neighbor.hspecs.r) - \
-            self.space.get_distance(self.pos, neighbor.pos)
-        if dis >= 0:
-            fx += (tmp_A * (math.e ** (dis / self.hspecs.repul_h[1])) + self.hspecs.k * dis) * \
-                n_ij[0] + self.hspecs.kappa * dis * \
-                np.dot(
-                (neighbor.velocity - self.velocity), t_ij)*t_ij[0]
-            fy += (tmp_A * (math.e ** (dis / self.hspecs.repul_h[1])) + self.hspecs.k * dis) * \
-                n_ij[1] + self.hspecs.kappa * dis * \
-                np.dot(
-                    (neighbor.velocity - self.velocity), t_ij)*t_ij[1]
-        else:
-            fx += tmp_A * (math.e **
-                                     (dis / self.hspecs.repul_h[1])) * n_ij[0]
-            fy += tmp_A * (math.e **
-                                     (dis / self.hspecs.repul_h[1])) * n_ij[1]
+        for i in range(len(self.model.wall_ab)):
+            dis, n_iw = self.distance_point_to_segment(i)
+            if dis < self._shared.vision:
+                t_iw = np.array([-n_iw[1], n_iw[0]])
+                tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
+                fx += tmp_fx
+                fy += tmp_fy
         return fx, fy
 
-    def choose_wall(self, neighbor, wall_dis, wall_obj):
-        tmp_wall_dis = self.space.get_distance(
-            self.pos, neighbor.pos)
-        if abs(self.pos[1] - neighbor.pos[1]) < 102 * 0.001 * 2:
-            if neighbor.dir == 2:
-                if tmp_wall_dis < wall_dis["left_wall_dis"]:
-                    wall_dis["left_wall_dis"] = tmp_wall_dis
-                    wall_obj["left_wall"] = neighbor
-            if neighbor.dir == 0:
-                if tmp_wall_dis < wall_dis["right_wall_dis"]:
-                    wall_dis["right_wall_dis"] = tmp_wall_dis
-                    wall_obj["right_wall"] = neighbor
-        elif abs(self.pos[0] - neighbor.pos[0]) < 158. * 0.001 * 2:
-            if neighbor.dir == 3:
-                if tmp_wall_dis < wall_dis["upper_wall_dis"]:
-                    wall_dis["upper_wall_dis"] = tmp_wall_dis
-                    wall_obj["upper_wall"] = neighbor
-            if neighbor.dir == 1:
-                if tmp_wall_dis < wall_dis["bottom_wall_dis"]:
-                    wall_dis["bottom_wall_dis"] = tmp_wall_dis
-                    wall_obj["bottom_wall"] = neighbor
-        return wall_dis, wall_obj
+    def distance_point_to_segment(self, i):
+        a = self.model.wall_a[i][:2]
+        ab = self.model.wall_ab[i][:2]
+        ap = self.pos - a
+        ab_len2 = self.model.wall_ab_len2[i]
 
-    def force_from_wall(self, wall_obj):
-        fx, fy = 0., 0.
-        tmp_wall = np.array([22., 26.])
-        tmp_dis = self.space.get_distance(self.pos, tmp_wall)
-        if tmp_dis <= 1.5:  # 壁に対して右斜め上に垂直なとき
-            if type(wall_obj["right_wall"]) is Wall or type(wall_obj["upper_wall"]) is Wall:
-                None
-            else:
-                n_iw = (self.pos - tmp_wall) / tmp_dis
-                t_iw = [-n_iw[1], n_iw[0]]
-                dis = tmp_dis + 1.
-                tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
-                fx += tmp_fx
-                fy += tmp_fy
+        if ab_len2 == 0: #壁の両端の座標が同じ場合
+            vec = self.pos - a
+            dis = np.linalg.norm(vec)
+            n_iw = vec / dis if dis > 1e-8 else np.array([0., 0.])
+            return dis, n_iw
+        
+        t = np.dot(ap, ab) / ab_len2 
+        if t < 0.0:
+            closest = self.model.wall_a[i][:2]
+        elif t > 1.0:
+            closest = self.model.wall_b[i][:2]
+        else:
+            closest = self.model.wall_a[i][:2] + t * ab
 
-        tmp_wall = np.array([16., 26.])  # 壁に対して左斜め上に垂直なとき
-        tmp_dis = self.space.get_distance(self.pos, tmp_wall)
-        if tmp_dis <= 1.5:
-            if type(wall_obj["left_wall"]) is Wall or type(wall_obj["upper_wall"]) is Wall:
-                None
-            else:
-                n_iw = (self.pos - tmp_wall) / tmp_dis
-                t_iw = [-n_iw[1], n_iw[0]]
-                dis = tmp_dis + 1.
-                tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
-                fx += tmp_fx
-                fy += tmp_fy
-
-        if type(wall_obj["left_wall"]) is Wall:
-            n_iw = [1., 0.]
-            t_iw = [-n_iw[1], n_iw[0]]
-            dis = self.hspecs.r - (self.pos[0] - wall_obj["left_wall"].pos[0])
-            dis += wall_obj["left_wall"].wall_r
-            tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
-            fx += tmp_fx
-            fy += tmp_fy
-            wall_obj["left_wall"] = 1.
-        if type(wall_obj["right_wall"]) is Wall:
-            n_iw = [-1., 0.]
-            t_iw = [-n_iw[1], n_iw[0]]
-            dis = self.hspecs.r - (wall_obj["right_wall"].pos[0] - self.pos[0])
-            dis += wall_obj["right_wall"].wall_r
-            tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
-            fx += tmp_fx
-            fy += tmp_fy
-            wall_obj["right_wall"] = 1.
-        if type(wall_obj["upper_wall"]) is Wall:
-            n_iw = [0., 1.]
-            t_iw = [-n_iw[1], n_iw[0]]
-            dis = self.hspecs.r - (self.pos[1] - wall_obj["upper_wall"].pos[1])
-            dis += wall_obj["upper_wall"].wall_r
-            tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
-            fx += tmp_fx
-            fy += tmp_fy
-            wall_obj["upper_wall"] = 1.
-        if type(wall_obj["bottom_wall"]) is Wall:
-            n_iw = [0., -1.]
-            t_iw = [-n_iw[1], n_iw[0]]
-            dis = self.hspecs.r - (wall_obj["bottom_wall"].pos[1] - self.pos[1])
-            dis += wall_obj["bottom_wall"].wall_r
-            tmp_fx, tmp_fy = self.wall_force_core(dis, n_iw, t_iw)
-            fx += tmp_fx
-            fy += tmp_fy
-            wall_obj["bottom_wall"] = 1.
-        return fx, fy, wall_obj
-
+        vec = self.pos - closest
+        dis = np.linalg.norm(vec)
+        if dis > 1e-8:
+            n_iw = vec / dis
+        else:
+            n_iw = np.array([0., 0.])
+        return dis, n_iw
+    
     def wall_force_core(self, dis, n_iw, t_iw):
         fx, fy = 0., 0.
         if dis >= 0:
@@ -355,7 +271,7 @@ class Human(mesa.Agent):
             fy += (self.hspecs.repul_m[0] * (math.e **
                     (dis / self.hspecs.repul_m[1]))) * n_iw[1]
         return fx, fy
-
+    
     def _calculate(self):
         fx, fy = self._force(self.target)
         self.velocity[0] += fx * self._shared.dt
@@ -364,6 +280,8 @@ class Human(mesa.Agent):
             v = copy.deepcopy(self.velocity)
             vn = np.linalg.norm(v)
             self.velocity = v / vn
+        # if self.unique_id == 2:
+        #     print(f"{self.pos=},{self.velocity=}\n{fx=},{fy=}")
         return None
     
     def pos_check(self):
@@ -395,7 +313,7 @@ class Human(mesa.Agent):
 
 class ForcefulHumanSpecs:
     "_fhspecs:ForcefulHuman-related specs set used in ForcefulHuman"
-    def __init__(self, f_r, f_m, f_tau, f_k, f_kappa, f_repul_h, f_repul_m, alpha):
+    def __init__(self, f_r, f_m, f_tau, f_k, f_kappa, f_repul_h, f_repul_m):
         self.r = f_r
         self.m = f_m
         self.tau = f_tau
@@ -403,7 +321,6 @@ class ForcefulHumanSpecs:
         self.kappa = f_kappa
         self.repul_h = f_repul_h
         self.repul_m = f_repul_m
-        self.alpha = alpha
 
 
 class ForcefulHuman(Human):
@@ -508,3 +425,4 @@ class Goal(mesa.Agent):
 
     def step(self):
         return None
+

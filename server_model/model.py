@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from s_agent import SharedParams, Human, HumanSpecs, ForcefulHuman, ForcefulHumanSpecs, Wall
+from agent import SharedParams, Human, HumanSpecs, ForcefulHuman, ForcefulHumanSpecs, Wall
 warnings.simplefilter('ignore', UserWarning)
 
 
@@ -28,9 +28,13 @@ class MoveAgent(mesa.Model):
         self.target_arr = target_arr
         self.v_arg = v_arg
         self.wall_arr = wall_arr
+        ####
+        self.wall_a, self.wall_b, self.wall_ab, self.wall_ab_len2 = self.pre_wall_arr()
+        ####
         self.seed = seed
         self.r = r
         self.wall_r = wall_r
+
         self.human_var = human_var
         self.forceful_human_var = forceful_human_var
         self.width = width
@@ -58,8 +62,8 @@ class MoveAgent(mesa.Model):
         self.save_specs_to_file(shared, human_var_inst, forceful_human_var_inst)
 
     def dir_parts(self):
-        basic_file_name = f"{self.add_file_name_arr[0]}{self.population}{self.add_file_name_arr[1]}"
-        self.add_file_name = f"{basic_file_name}{int(self.f_m)}/"
+        basic_file_name = f"{self.add_file_name_arr[0]}/nol_pop_{self.population}"
+        self.add_file_name = f"{basic_file_name}/"
         self.add_file_name = self.add_file_name + "seed_" + str(self.seed)
         return None
 
@@ -70,23 +74,21 @@ class MoveAgent(mesa.Model):
         self.kappa = self.human_var["kappa"]
         self.repul_h = self.human_var["repul_h"]
         self.repul_m = self.human_var["repul_m"]
-        self.alpha = self.human_var["alpha"]
         self.f_m = self.forceful_human_var["f_m"]
         self.f_tau = self.forceful_human_var["f_tau"]
         self.f_k = self.forceful_human_var["f_k"]
         self.f_kappa = self.forceful_human_var["f_kappa"]
         self.f_repul_h = self.forceful_human_var["f_repul_h"]
         self.f_repul_m = self.forceful_human_var["f_repul_m"]
-        self.f_alpha = self.forceful_human_var["f_alpha"]
         shared = SharedParams(self.in_target_d, self.vision, self.dt)
-        human_var_inst = HumanSpecs(self.r, self.m, self.tau, self.k, self.kappa, self.repul_h, self.repul_m, self.alpha)
-        forceful_human_var_inst = ForcefulHumanSpecs(self.f_r, self.f_m, self.f_tau, self.f_k, self.f_kappa, self.f_repul_h, self.f_repul_m, self.f_alpha)
+        human_var_inst = HumanSpecs(self.r, self.m, self.tau, self.k, self.kappa, self.repul_h, self.repul_m)
+        forceful_human_var_inst = ForcefulHumanSpecs(self.f_r, self.f_m, self.f_tau, self.f_k, self.f_kappa, self.f_repul_h, self.f_repul_m)
         return shared, human_var_inst, forceful_human_var_inst
 
     def make_basic_dir(self):
         path = f"{self.add_file_name}/Data/"
         os.makedirs(path, exist_ok=True)
-        with open(f"{path}nolmal.dat", "w") as f:
+        with open(f"{path}normal.dat", "w") as f:
             f.write("evacuation_time\n")
         os.makedirs(path, exist_ok=True)
         with open(f"{path}forceful.dat", "w") as f:
@@ -119,7 +121,7 @@ class MoveAgent(mesa.Model):
     def make_agents(self, shared, human_var_inst, forceful_human_var_inst):
         tmp_id = 0
         tmp_id = self.generate_human(tmp_id, shared, human_var_inst, forceful_human_var_inst)
-        self.generate_wall(tmp_id)
+        # self.generate_wall(tmp_id)
 
     def generate_human(self, tmp_id, shared, human_var_inst, forceful_human_var_inst):
         tmp_div = 1.
@@ -152,8 +154,8 @@ class MoveAgent(mesa.Model):
             else:  # 通常の人
                 pos = self.decide_positon(human_array, i - tmp_id) #tmp
                 velocity = self.decide_vel()
-                nolmal_target = self.decide_nolmal_target()
-                target = nolmal_target
+                normal_target = self.decide_normal_target()
+                target = normal_target
                 human = Human(i, self, pos, velocity, target, tmp_div,
                               shared,
                               human_var_inst, self.space,
@@ -197,13 +199,13 @@ class MoveAgent(mesa.Model):
                 break
         return velocity
 
-    def decide_nolmal_target(self):
+    def decide_normal_target(self):
         while 1:
             y = np.random.randint(26, 40) + np.random.rand()
             if 26. + self.r <= y <= 40. - self.r:
-                nolmal_target = [54., y]
+                normal_target = [54., y]
                 break
-        return nolmal_target
+        return normal_target
 
     def human_pos_check(self, tmp_pos, human_array):
         for hu in human_array:
@@ -226,71 +228,80 @@ class MoveAgent(mesa.Model):
                 if dis < self.max_f_r + self.r:
                     return False
         return True
+    
+    def pre_wall_arr(self):
+        wall_a = self.wall_arr[:, 0]           # 各壁の始点 (N_wall, 2)
+        wall_b = self.wall_arr[:, 1]           # 各壁の終点 (N_wall, 2)
+        wall_ab = wall_b - wall_a         # ベクトル (N_wall, 2)
+        wall_ab_len2 = np.array([])
+        for ab in wall_ab:
+            wall_ab_len2 = np.append(wall_ab_len2, np.dot(ab, ab))
+        return wall_a, wall_b, wall_ab, wall_ab_len2
 
-    def generate_wall(self, id):  # 壁を作る
-        i = 0
-        while 1:
-            if i >= len(self.wall_arr) - 1:
-                break
-            tmp_wall_1 = self.wall_arr[i]
-            tmp_wall_2 = self.wall_arr[i + 1]
-            tmp_x, tmp_y = tmp_wall_1[0], tmp_wall_1[1]
-            not_skip = 1
-            if tmp_wall_1[2] == 0 or tmp_wall_1[2] == 2:
-                while 1:
-                    if tmp_y >= tmp_wall_2[1]:
-                        break
-                    if i != 0:
-                        neighbors = self.space.get_neighbors(
-                            np.array((27., 20.)), 30, False)
-                        for neighbor in neighbors:
-                            if type(neighbor) is Wall:
-                                if tmp_x == neighbor.pos[0] and tmp_y == neighbor.pos[1]:
-                                    not_skip = 0
-                                    break
-                    if not_skip:
-                        self.generate_block(tmp_x, tmp_y, id, tmp_wall_1[2])
-                        id += 1
-                        tmp_y += self.height * 0.001
-                    else:
-                        not_skip = 1
-                        tmp_y += self.height * 0.001
-            elif tmp_wall_1[2] == 1 or tmp_wall_1[2] == 3:
-                while 1:
-                    if tmp_x >= tmp_wall_2[0]:
-                        break
-                    if i != 0:
-                        neighbors = self.space.get_neighbors(
-                            np.array((27., 20.)), 30, False)
-                        for neighbor in neighbors:
-                            if type(neighbor) is Wall:
-                                if tmp_x == neighbor.pos[0] and tmp_y == neighbor.pos[1]:
-                                    not_skip = 0
-                                    break
-                    if not_skip:
-                        self.generate_block(tmp_x, tmp_y, id, tmp_wall_1[2])
-                        id += 1
-                        tmp_x += self.width * 0.001
-                    else:
-                        not_skip = 1
-                        tmp_x += self.width * 0.001
-            else:
-                print("generate_wall_error")
-            i += 2
-        return id  # tmp_y -= self.height * 0.001
+    # def generate_wall(self, id):  # 壁を作る
+    #     i = 0
+    #     while 1:
+    #         if i >= len(self.wall_arr) - 1:
+    #             break
+    #         tmp_wall_1 = self.wall_arr[i]
+    #         tmp_wall_2 = self.w[i + 1]
+    #         tmp_x, tmp_y = tmp_wall_1[0], tmp_wall_1[1]
+    #         not_skip = 1
+    #         if tmp_wall_1[2] == 0 or tmp_wall_1[2] == 2:
+    #             while 1:
+    #                 if tmp_y >= tmp_wall_2[1]:
+    #                     break
+    #                 if i != 0:
+    #                     neighbors = self.space.get_neighbors(
+    #                         np.array((27., 20.)), 30, False)
+    #                     for neighbor in neighbors:
+    #                         if type(neighbor) is Wall:
+    #                             if tmp_x == neighbor.pos[0] and tmp_y == neighbor.pos[1]:
+    #                                 not_skip = 0
+    #                                 break
+    #                 if not_skip:
+    #                     self.generate_block(tmp_x, tmp_y, id, tmp_wall_1[2])
+    #                     id += 1
+    #                     tmp_y += self.height * 0.001
+    #                 else:
+    #                     not_skip = 1
+    #                     tmp_y += self.height * 0.001
+    #         elif tmp_wall_1[2] == 1 or tmp_wall_1[2] == 3:
+    #             while 1:
+    #                 if tmp_x >= tmp_wall_2[0]:
+    #                     break
+    #                 if i != 0:
+    #                     neighbors = self.space.get_neighbors(
+    #                         np.array((27., 20.)), 30, False)
+    #                     for neighbor in neighbors:
+    #                         if type(neighbor) is Wall:
+    #                             if tmp_x == neighbor.pos[0] and tmp_y == neighbor.pos[1]:
+    #                                 not_skip = 0
+    #                                 break
+    #                 if not_skip:
+    #                     self.generate_block(tmp_x, tmp_y, id, tmp_wall_1[2])
+    #                     id += 1
+    #                     tmp_x += self.width * 0.001
+    #                 else:
+    #                     not_skip = 1
+    #                     tmp_x += self.width * 0.001
+    #         else:
+    #             print("generate_wall_error")
+    #         i += 2
+    #     return id  # tmp_y -= self.height * 0.001
 
-    def generate_block(self, x, y, id, cnt):  # 1つブロックを生成する
-        pos = np.array((x, y))
-        dir = cnt  # 1:左 2:上　3:右　4:下　の方向に避難者に力を与える → 0:左 1:上　2:右　3:下
-        wall = Wall(
-            id,
-            self,
-            pos,
-            self.wall_r,
-            dir,
-        )
-        self.space.place_agent(wall, pos)
-        self.schedule.add(wall)
+    # def generate_block(self, x, y, id, cnt):  # 1つブロックを生成する
+    #     pos = np.array((x, y))
+    #     dir = cnt  # 1:左 2:上　3:右　4:下　の方向に避難者に力を与える → 0:左 1:上　2:右　3:下
+    #     wall = Wall(
+    #         id,
+    #         self,
+    #         pos,
+    #         self.wall_r,
+    #         dir,
+    #     )
+    #     self.space.place_agent(wall, pos)
+    #     self.schedule.add(wall)
 
     def check_f_parameter(self):
         count = 0
@@ -335,7 +346,7 @@ class MoveAgent(mesa.Model):
 
     def all_agent_evacuate(self):
         cur_pop_num = (
-            len(open(f"{self.add_file_name}/Data/nolmal.dat").readlines()))
+            len(open(f"{self.add_file_name}/Data/normal.dat").readlines()))
         if cur_pop_num == self.population + 1:
             if (len(open(f"{self.add_file_name}/Data/forceful.dat").readlines())) + cur_pop_num == self.population + self.for_population + 2:
                 return True
@@ -347,24 +358,25 @@ class MoveAgent(mesa.Model):
                 if type(obj) is Human or type(obj) is ForcefulHuman:
                     path = obj.add_file_name
                     obj.make_dir(path)
-                    obj.write_record(path, obj.max_population_around)
+                    obj.write_record(path)
         self.write_interrupt()
 
     def write_interrupt(self):
-        nolmal_num = len(
-            open(f"{self.add_file_name}/Data/nolmal.dat").readlines())
+        normal_num = len(
+            open(f"{self.add_file_name}/Data/normal.dat").readlines())
         forceful_num = len(
             open(f"{self.add_file_name}/Data/forceful.dat").readlines())
-        if nolmal_num < self.population + 1:
+        if normal_num < self.population + 1:
             if forceful_num < self.for_population + 1:
-                with open(f"{self.add_file_name}/Data/nolmal.dat", "a") as f:
+                with open(f"{self.add_file_name}/Data/normal.dat", "a") as f:
                     f.write(f"interrupt\n")
                 with open(f"{self.add_file_name}/Data/forceful.dat", "a") as f:
                     f.write(f"interrupt\n")
             else:
-                with open(f"{self.add_file_name}/Data/nolmal.dat", "a") as f:
+                with open(f"{self.add_file_name}/Data/normal.dat", "a") as f:
                     f.write(f"interrupt\n")
         else:
             with open(f"{self.add_file_name}/Data/forceful.dat", "a") as f:
                 f.write(f"interrupt\n")
+
 
