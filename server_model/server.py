@@ -5,7 +5,7 @@ import numpy as np
 
 
 def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, for_pop, target_arr, tmp_seed, len_sq, f_r, max_f_r, f_tau, csv_plot):
-    ex_num = 2 # force_tau
+    ex_num = 1 # force_tau
     # if csv_plot:
     #     file_name_array = [
     #         f"/local_home/keito/simple_convex_map/agst_dir/goal_up_forceful_tau/ex{ex_num}_for_{for_pop}_len_{int(len_sq)}_csv/tau_{int(f_tau*100)}/"]
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     tmp_seed = int(sys.argv[3])  # seed値
     f_r = 0.5
     for_pop = 5  # 強引な避難者の人数 #tmp
-    csv_plot = True  # csvファイル(各エージェントの動きの軌跡)を出力するかどうか
+    csv_plot = False  # csvファイル(各エージェントの動きの軌跡)を出力するかどうか
     len_sq = 3  # 長方形の一辺の長さはlen_sq*2
     # max_f_r = 1.01
     max_f_r = 0.5

@@ -155,11 +155,11 @@ class Human(mesa.Agent):
 
     def write_record(self, path):
         if self.model.csv_plot:
-            np.savetxt(f"{path}/csv/id{self.unique_id}_nolmal"
+            np.savetxt(f"{path}/csv/id{self.unique_id}_normal"
                        f".csv", self.pos_array, delimiter=",")
         if self.in_goal:
             with open(f"{self.add_file_name}/Data/"
-                      f"nolmal.dat", "a") as f:
+                      f"normal.dat", "a") as f:
                 f.write(f"{self.elapsed_time} \n")
 
     def _sincos(self, x2):

@@ -88,7 +88,7 @@ class MoveAgent(mesa.Model):
     def make_basic_dir(self):
         path = f"{self.add_file_name}/Data/"
         os.makedirs(path, exist_ok=True)
-        with open(f"{path}nolmal.dat", "w") as f:
+        with open(f"{path}normal.dat", "w") as f:
             f.write("evacuation_time\n")
         os.makedirs(path, exist_ok=True)
         with open(f"{path}forceful.dat", "w") as f:
@@ -154,8 +154,8 @@ class MoveAgent(mesa.Model):
             else:  # 通常の人
                 pos = self.decide_positon(human_array, i - tmp_id) #tmp
                 velocity = self.decide_vel()
-                nolmal_target = self.decide_nolmal_target()
-                target = nolmal_target
+                normal_target = self.decide_normal_target()
+                target = normal_target
                 human = Human(i, self, pos, velocity, target, tmp_div,
                               shared,
                               human_var_inst, self.space,
@@ -199,13 +199,13 @@ class MoveAgent(mesa.Model):
                 break
         return velocity
 
-    def decide_nolmal_target(self):
+    def decide_normal_target(self):
         while 1:
             y = np.random.randint(26, 40) + np.random.rand()
             if 26. + self.r <= y <= 40. - self.r:
-                nolmal_target = [54., y]
+                normal_target = [54., y]
                 break
-        return nolmal_target
+        return normal_target
 
     def human_pos_check(self, tmp_pos, human_array):
         for hu in human_array:
@@ -346,7 +346,7 @@ class MoveAgent(mesa.Model):
 
     def all_agent_evacuate(self):
         cur_pop_num = (
-            len(open(f"{self.add_file_name}/Data/nolmal.dat").readlines()))
+            len(open(f"{self.add_file_name}/Data/normal.dat").readlines()))
         if cur_pop_num == self.population + 1:
             if (len(open(f"{self.add_file_name}/Data/forceful.dat").readlines())) + cur_pop_num == self.population + self.for_population + 2:
                 return True
@@ -362,18 +362,18 @@ class MoveAgent(mesa.Model):
         self.write_interrupt()
 
     def write_interrupt(self):
-        nolmal_num = len(
-            open(f"{self.add_file_name}/Data/nolmal.dat").readlines())
+        normal_num = len(
+            open(f"{self.add_file_name}/Data/normal.dat").readlines())
         forceful_num = len(
             open(f"{self.add_file_name}/Data/forceful.dat").readlines())
-        if nolmal_num < self.population + 1:
+        if normal_num < self.population + 1:
             if forceful_num < self.for_population + 1:
-                with open(f"{self.add_file_name}/Data/nolmal.dat", "a") as f:
+                with open(f"{self.add_file_name}/Data/normal.dat", "a") as f:
                     f.write(f"interrupt\n")
                 with open(f"{self.add_file_name}/Data/forceful.dat", "a") as f:
                     f.write(f"interrupt\n")
             else:
-                with open(f"{self.add_file_name}/Data/nolmal.dat", "a") as f:
+                with open(f"{self.add_file_name}/Data/normal.dat", "a") as f:
                     f.write(f"interrupt\n")
         else:
             with open(f"{self.add_file_name}/Data/forceful.dat", "a") as f:
