@@ -1,7 +1,8 @@
 # sfm_mesa_convex_map
 ##　ブランチの歴史
 1. feature/agent-turning(リファクタリング)
-2. perf/wall_dist_vec(今回：壁の計算方法を改良する)
+2. perf/wall_dist_vec(壁の計算方法を改良する)
+3. refactor/waypoint-param(今回：目的地の設定方法をハードコーディングから変数などの柔軟な方法に変える)
 
 ## 今回の最終目的
 - 主な壁と避難者の距離の計算方法をベクトル演算のみに変える ← 途中(曲がり角付近の避難者の挙動がおかしいため)
