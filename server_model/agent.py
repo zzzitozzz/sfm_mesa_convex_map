@@ -57,20 +57,15 @@ class Human(mesa.Agent):
         return self._hspecs
     
     def step(self):  # 次の位置を特定するための計算式を書く
-        self.target_update()
-        i = 5
-        while i:
-            self._calculate()
-            target_dis = abs(self.pos[0] - 54.)
-            self.goal_check(target_dis)
-            self.tmp_pos[0] = self.pos[0] + \
-                self.velocity[0] * self._shared.dt  # 仮の位置を計算
-            self.tmp_pos[1] = self.pos[1] + self.velocity[1] * self._shared.dt
-            if self.pos_check():
-                break
-            else:
-                i -= 1
-                self.reset_target()
+        self._calculate()
+        target_dis = abs(self.pos[0] - 54.)
+        self.goal_check(target_dis)
+        self.tmp_pos[0] = self.pos[0] + \
+            self.velocity[0] * self._shared.dt  # 仮の位置を計算
+        self.tmp_pos[1] = self.pos[1] + self.velocity[1] * self._shared.dt
+        tmp_bol = self.pos_check()
+        if not tmp_bol:
+            print(f"{self.unique_id=},{tmp_bol=} {self.elapsed_time=}")
         return None
 
     def advance(self):
@@ -285,8 +280,10 @@ class Human(mesa.Agent):
         return None
     
     def pos_check(self):
-        area = [[4., 26 + self.hspecs.r], [54., 40. - self.hspecs.r],
-                [16. + self.hspecs.r, 4.], [22. - self.hspecs.r, 40. - self.hspecs.r]]       
+        # area = [[4., 26 + self.hspecs.r], [54., 40. - self.hspecs.r],
+        #         [16. + self.hspecs.r, 4.], [22. - self.hspecs.r, 40. - self.hspecs.r]]       
+        area = [[2., 26 + self.hspecs.r], [54., 40. - self.hspecs.r],
+                [16. + self.hspecs.r, 4.], [22. - self.hspecs.r, 40. - self.hspecs.r]]     
         area_check = False
         i = 0
         while 1:
@@ -300,6 +297,10 @@ class Human(mesa.Agent):
         if area_check:
             return True
         else:
+            if self.tmp_pos[0] < 4. and 26. < self.tmp_pos[1] < 40.:
+                print(f"!!!!!")
+            else:
+                print(f"{self.pos=},{self.tmp_pos=}")
             self.tmp_pos = copy.deepcopy(self.pos)
             return False
 
@@ -363,22 +364,15 @@ class ForcefulHuman(Human):
         self._force_mode = val
 
     def step(self):  # 次の位置を特定するための計算式を書く
-        # 67step後(最大約20m進んだのち)にforcefulhumanに変化(naito 10step(20m))
-        self.target_update()
-        i = 5
-        while i:
-            self._calculate()
-            # target_dis = self.space.get_distance(self.pos, self.target)
-            target_dis = abs(self.pos[1] - 14.)
-            self.goal_check(target_dis)
-            self.tmp_pos[0] = self.pos[0] + \
-                self.velocity[0] * self._shared.dt  # 仮の位置を計算
-            self.tmp_pos[1] = self.pos[1] + self.velocity[1] * self._shared.dt
-            if self.pos_check():
-                break
-            else:
-                i -= 1
-                self.reset_target()
+        self._calculate()
+        target_dis = abs(self.pos[1] - 14.)
+        self.goal_check(target_dis)
+        self.tmp_pos[0] = self.pos[0] + \
+            self.velocity[0] * self._shared.dt  # 仮の位置を計算
+        self.tmp_pos[1] = self.pos[1] + self.velocity[1] * self._shared.dt
+        tmp_bol = self.pos_check()
+        if not tmp_bol:
+            print(f"{self.unique_id=},{tmp_bol=} {self.elapsed_time=}")
         return None
 
     def write_record(self, path):
