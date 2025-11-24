@@ -15,17 +15,18 @@ warnings.simplefilter('ignore', UserWarning)
 class MoveAgent(mesa.Model):
 
     def __init__(
-            self, population=100, for_population=1, target_arr=[], v_arg=[], wall_arr=[[]], seed=1, r=0.5,
+            self, population=100, for_population=1, target_arr=[], goal_arr=[], v_arg=[], wall_arr=[[]], seed=1, r=0.5,
             wall_r=0.5, human_var={}, forceful_human_var={},
             width=100, height=100, dt=0.1,
             in_target_d=3, vision=3, time_step=0,
             add_file_name="", add_file_name_arr=[],
-            len_sq=3., f_r=0., max_f_r=1.,
+            len_sq=3., f_r=0.,pos_func= {},
             csv_plot=False):
         super().__init__()
         self.population = population
         self.for_population = for_population
         self.target_arr = target_arr
+        self.goal_arr = goal_arr
         self.v_arg = v_arg
         self.wall_arr = wall_arr
         ####
@@ -46,7 +47,9 @@ class MoveAgent(mesa.Model):
         self.add_file_name_arr = add_file_name_arr
         self.len_sq = len_sq
         self.f_r = f_r
-        self.max_f_r = max_f_r
+        ###
+        self.pos_func = pos_func
+        ###
         self.csv_plot = csv_plot
         shared, human_var_inst, forceful_human_var_inst = self.assign_ini_human_and_forceful_human_var()
         self.dir_parts()
@@ -138,7 +141,7 @@ class MoveAgent(mesa.Model):
                     pos = np.array((19., 36.))
                     pos_array.append(pos)
                 else:
-                    pos = self.decide_forceful_postion(human_array)
+                    pos = self.pos_func.decide_forceful_position(self.r, self.f_r, human_array)
                 forceful_target = [19., 14.]
                 target = forceful_target
                 human = ForcefulHuman(i, self, pos, velocity,
@@ -152,7 +155,7 @@ class MoveAgent(mesa.Model):
                 human_array.append(human)
                 tmp_forceful_num -= 1
             else:  # 通常の人
-                pos = self.decide_positon(human_array, i - tmp_id) #tmp
+                pos = self.pos_func.decide_position(self.r, self.f_r, human_array) #tmp
                 velocity = self.decide_vel()
                 normal_target = self.decide_normal_target()
                 target = normal_target
@@ -166,29 +169,29 @@ class MoveAgent(mesa.Model):
         tmp_id += self.population + self.for_population
         return tmp_id
 
-    def decide_positon(self, human_array, i):
-        while 1:
-            x = np.random.randint(4, 34) + np.random.rand()
-            y = np.random.randint(26, 40) + np.random.rand()
-            if 4. + self.r * 2 <= x <= 34. - self.r * 2 and 26. + self.r * 2 <= y <= 40. - self.r * 2:
-                tmp_pos = np.array((x, y))
-                if self.human_pos_check(tmp_pos, human_array):
-                    pos = tmp_pos
-                    break
-        return pos
+    # def decide_position(self, human_array, i):
+    #     while 1:
+    #         x = np.random.randint(4, 34) + np.random.rand()
+    #         y = np.random.randint(26, 40) + np.random.rand()
+    #         if 4. + self.r * 2 <= x <= 34. - self.r * 2 and 26. + self.r * 2 <= y <= 40. - self.r * 2:
+    #             tmp_pos = np.array((x, y))
+    #             if self.human_pos_check(tmp_pos, human_array):
+    #                 pos = tmp_pos
+    #                 break
+    #     return pos
 
-    def decide_forceful_postion(self, human_array):
-        while 1:
-            x = np.random.randint(19.-self.len_sq, 19. +
-                                  self.len_sq) + np.random.rand()
-            y = np.random.randint(32.5-self.len_sq, 32.5 +
-                                  self.len_sq) + np.random.rand()
-            if 19.-self.len_sq + self.max_f_r <= x <= 19.+self.len_sq - self.max_f_r and 32.5-self.len_sq + self.max_f_r <= y <= 32.5+self.len_sq - self.max_f_r:
-                tmp_pos = np.array((x, y))
-                if self.forceful_human_pos_check(tmp_pos, human_array):
-                    pos = tmp_pos
-                    break
-        return pos
+    # def decide_forceful_position(self, human_array):
+    #     while 1:
+    #         x = np.random.randint(19.-self.len_sq, 19. +
+    #                               self.len_sq) + np.random.rand()
+    #         y = np.random.randint(32.5-self.len_sq, 32.5 +
+    #                               self.len_sq) + np.random.rand()
+    #         if 19.-self.len_sq + self.max_f_r <= x <= 19.+self.len_sq - self.max_f_r and 32.5-self.len_sq + self.max_f_r <= y <= 32.5+self.len_sq - self.max_f_r:
+    #             tmp_pos = np.array((x, y))
+    #             if self.forceful_human_pos_check(tmp_pos, human_array):
+    #                 pos = tmp_pos
+    #                 break
+    #     return pos
 
     def decide_vel(self):
         while 1:
@@ -207,27 +210,27 @@ class MoveAgent(mesa.Model):
                 break
         return normal_target
 
-    def human_pos_check(self, tmp_pos, human_array):
-        for hu in human_array:
-            dis = self.space.get_distance(tmp_pos, hu.pos)
-            if type(hu) is Human:   ##強引な避難者の大きさを変更したときの条件式
-                if dis < self.r + self.r:
-                    return False
-            elif type(hu) is ForcefulHuman:
-                if dis < self.r + self.max_f_r:
-                    return False
-        return True
+    # def human_pos_check(self, tmp_pos, human_array):
+    #     for hu in human_array:
+    #         dis = self.space.get_distance(tmp_pos, hu.pos)
+    #         if type(hu) is Human:   ##強引な避難者の大きさを変更したときの条件式
+    #             if dis < self.r + self.r:
+    #                 return False
+    #         elif type(hu) is ForcefulHuman:
+    #             if dis < self.r + self.max_f_r:
+    #                 return False
+    #     return True
 
-    def forceful_human_pos_check(self, tmp_pos, human_array):
-        for hu in human_array:
-            dis = self.space.get_distance(tmp_pos, hu.pos)
-            if type(hu) is Human: ##強引な避難者の大きさを変更したときの条件式
-                if dis < self.r + self.r:
-                    return False
-            if type(hu) is ForcefulHuman:
-                if dis < self.max_f_r + self.r:
-                    return False
-        return True
+    # def forceful_human_pos_check(self, tmp_pos, human_array):
+    #     for hu in human_array:
+    #         dis = self.space.get_distance(tmp_pos, hu.pos)
+    #         if type(hu) is Human: ##強引な避難者の大きさを変更したときの条件式
+    #             if dis < self.r + self.r:
+    #                 return False
+    #         if type(hu) is ForcefulHuman:
+    #             if dis < self.max_f_r + self.r:
+    #                 return False
+    #     return True
     
     def pre_wall_arr(self):
         wall_a = self.wall_arr[:, 0]           # 各壁の始点 (N_wall, 2)
