@@ -2,6 +2,7 @@ import mesa
 import os
 import sys
 import warnings
+import copy
 from datetime import datetime
 
 import numpy as np
@@ -15,17 +16,17 @@ warnings.simplefilter('ignore', UserWarning)
 class MoveAgent(mesa.Model):
 
     def __init__(
-            self, population=100, for_population=1, target_arr=[], goal_arr=[], v_arg=[], wall_arr=[[]], seed=1, r=0.5,
+            self, population=100, for_population=1, dests=[], goal_arr=[], v_arg=[], wall_arr=[[]], seed=1, r=0.5,
             wall_r=0.5, human_var={}, forceful_human_var={},
             width=100, height=100, dt=0.1,
-            in_target_d=3, vision=3, time_step=0,
+            in_dest_d=3, vision=3, time_step=0,
             add_file_name="", add_file_name_arr=[],
             len_sq=3., f_r=0.,pos_func= {},
             csv_plot=False):
         super().__init__()
         self.population = population
         self.for_population = for_population
-        self.target_arr = target_arr
+        self.dests = dests
         self.goal_arr = goal_arr
         self.v_arg = v_arg
         self.wall_arr = wall_arr
@@ -41,7 +42,7 @@ class MoveAgent(mesa.Model):
         self.width = width
         self.height = height
         self.dt = dt
-        self.in_target_d = in_target_d
+        self.in_dest_d = in_dest_d
         self.vision = vision
         self.time_step = time_step
         self.add_file_name_arr = add_file_name_arr
@@ -83,7 +84,7 @@ class MoveAgent(mesa.Model):
         self.f_kappa = self.forceful_human_var["f_kappa"]
         self.f_repul_h = self.forceful_human_var["f_repul_h"]
         self.f_repul_m = self.forceful_human_var["f_repul_m"]
-        shared = SharedParams(self.in_target_d, self.vision, self.dt)
+        shared = SharedParams(self.in_dest_d, self.vision, self.dt)
         human_var_inst = HumanSpecs(self.r, self.m, self.tau, self.k, self.kappa, self.repul_h, self.repul_m)
         forceful_human_var_inst = ForcefulHumanSpecs(self.f_r, self.f_m, self.f_tau, self.f_k, self.f_kappa, self.f_repul_h, self.f_repul_m)
         return shared, human_var_inst, forceful_human_var_inst
@@ -136,16 +137,12 @@ class MoveAgent(mesa.Model):
             velocity = []
             if tmp_forceful_num:  # 強引な人(強引な人の位置が先に決まったのち通常の避難者の位置が決まる)
                 velocity = self.decide_vel()
-                # pos, pos_array = self.decide_forceful_postion(pos_array)
-                if self.for_population == 1:
-                    pos = np.array((19., 36.))
-                    pos_array.append(pos)
-                else:
-                    pos = self.pos_func.decide_forceful_position(self.r, self.f_r, human_array)
-                forceful_target = [19., 14.]
-                target = forceful_target
+                pos = self.pos_func.decide_forceful_position(self.r, self.f_r, human_array)
+                route = copy.copy(self.decide_dest())
+                dest = route[0]
                 human = ForcefulHuman(i, self, pos, velocity,
-                                      target, tmp_div, shared,
+                                      dest, route,
+                                      tmp_div, shared,
                                       human_var_inst,
                                       self.space, self.add_file_name,
                                       forceful_human_var_inst,
@@ -157,10 +154,10 @@ class MoveAgent(mesa.Model):
             else:  # 通常の人
                 pos = self.pos_func.decide_position(self.r, self.f_r, human_array) #tmp
                 velocity = self.decide_vel()
-                normal_target = self.decide_normal_target()
-                target = normal_target
-                human = Human(i, self, pos, velocity, target, tmp_div,
-                              shared,
+                route = copy.copy(self.decide_dest())
+                dest = route[0]
+                human = Human(i, self, pos, velocity, dest, route,
+                              tmp_div, shared,
                               human_var_inst, self.space,
                               self.add_file_name,)
                 self.space.place_agent(human, pos)
@@ -168,30 +165,6 @@ class MoveAgent(mesa.Model):
                 human_array.append(human)
         tmp_id += self.population + self.for_population
         return tmp_id
-
-    # def decide_position(self, human_array, i):
-    #     while 1:
-    #         x = np.random.randint(4, 34) + np.random.rand()
-    #         y = np.random.randint(26, 40) + np.random.rand()
-    #         if 4. + self.r * 2 <= x <= 34. - self.r * 2 and 26. + self.r * 2 <= y <= 40. - self.r * 2:
-    #             tmp_pos = np.array((x, y))
-    #             if self.human_pos_check(tmp_pos, human_array):
-    #                 pos = tmp_pos
-    #                 break
-    #     return pos
-
-    # def decide_forceful_position(self, human_array):
-    #     while 1:
-    #         x = np.random.randint(19.-self.len_sq, 19. +
-    #                               self.len_sq) + np.random.rand()
-    #         y = np.random.randint(32.5-self.len_sq, 32.5 +
-    #                               self.len_sq) + np.random.rand()
-    #         if 19.-self.len_sq + self.max_f_r <= x <= 19.+self.len_sq - self.max_f_r and 32.5-self.len_sq + self.max_f_r <= y <= 32.5+self.len_sq - self.max_f_r:
-    #             tmp_pos = np.array((x, y))
-    #             if self.forceful_human_pos_check(tmp_pos, human_array):
-    #                 pos = tmp_pos
-    #                 break
-    #     return pos
 
     def decide_vel(self):
         while 1:
@@ -201,36 +174,15 @@ class MoveAgent(mesa.Model):
             if 0.5 <= np.linalg.norm(velocity, 2) <= 1.:
                 break
         return velocity
+    
+    def decide_dest(self):
+        tmp_dest = [] #tmp
+        tmp_dest = [0, 1, 2, 1] #tmp
+        tmp_dest.append(self.goal_arr[0]) #tmp
+        return tmp_dest
 
-    def decide_normal_target(self):
-        while 1:
-            y = np.random.randint(26, 40) + np.random.rand()
-            if 26. + self.r <= y <= 40. - self.r:
-                normal_target = [54., y]
-                break
-        return normal_target
-
-    # def human_pos_check(self, tmp_pos, human_array):
-    #     for hu in human_array:
-    #         dis = self.space.get_distance(tmp_pos, hu.pos)
-    #         if type(hu) is Human:   ##強引な避難者の大きさを変更したときの条件式
-    #             if dis < self.r + self.r:
-    #                 return False
-    #         elif type(hu) is ForcefulHuman:
-    #             if dis < self.r + self.max_f_r:
-    #                 return False
-    #     return True
-
-    # def forceful_human_pos_check(self, tmp_pos, human_array):
-    #     for hu in human_array:
-    #         dis = self.space.get_distance(tmp_pos, hu.pos)
-    #         if type(hu) is Human: ##強引な避難者の大きさを変更したときの条件式
-    #             if dis < self.r + self.r:
-    #                 return False
-    #         if type(hu) is ForcefulHuman:
-    #             if dis < self.max_f_r + self.r:
-    #                 return False
-    #     return True
+    def decide_route(self):
+        pass
     
     def pre_wall_arr(self):
         wall_a = self.wall_arr[:, 0]           # 各壁の始点 (N_wall, 2)
@@ -240,71 +192,6 @@ class MoveAgent(mesa.Model):
         for ab in wall_ab:
             wall_ab_len2 = np.append(wall_ab_len2, np.dot(ab, ab))
         return wall_a, wall_b, wall_ab, wall_ab_len2
-
-    # def generate_wall(self, id):  # 壁を作る
-    #     i = 0
-    #     while 1:
-    #         if i >= len(self.wall_arr) - 1:
-    #             break
-    #         tmp_wall_1 = self.wall_arr[i]
-    #         tmp_wall_2 = self.w[i + 1]
-    #         tmp_x, tmp_y = tmp_wall_1[0], tmp_wall_1[1]
-    #         not_skip = 1
-    #         if tmp_wall_1[2] == 0 or tmp_wall_1[2] == 2:
-    #             while 1:
-    #                 if tmp_y >= tmp_wall_2[1]:
-    #                     break
-    #                 if i != 0:
-    #                     neighbors = self.space.get_neighbors(
-    #                         np.array((27., 20.)), 30, False)
-    #                     for neighbor in neighbors:
-    #                         if type(neighbor) is Wall:
-    #                             if tmp_x == neighbor.pos[0] and tmp_y == neighbor.pos[1]:
-    #                                 not_skip = 0
-    #                                 break
-    #                 if not_skip:
-    #                     self.generate_block(tmp_x, tmp_y, id, tmp_wall_1[2])
-    #                     id += 1
-    #                     tmp_y += self.height * 0.001
-    #                 else:
-    #                     not_skip = 1
-    #                     tmp_y += self.height * 0.001
-    #         elif tmp_wall_1[2] == 1 or tmp_wall_1[2] == 3:
-    #             while 1:
-    #                 if tmp_x >= tmp_wall_2[0]:
-    #                     break
-    #                 if i != 0:
-    #                     neighbors = self.space.get_neighbors(
-    #                         np.array((27., 20.)), 30, False)
-    #                     for neighbor in neighbors:
-    #                         if type(neighbor) is Wall:
-    #                             if tmp_x == neighbor.pos[0] and tmp_y == neighbor.pos[1]:
-    #                                 not_skip = 0
-    #                                 break
-    #                 if not_skip:
-    #                     self.generate_block(tmp_x, tmp_y, id, tmp_wall_1[2])
-    #                     id += 1
-    #                     tmp_x += self.width * 0.001
-    #                 else:
-    #                     not_skip = 1
-    #                     tmp_x += self.width * 0.001
-    #         else:
-    #             print("generate_wall_error")
-    #         i += 2
-    #     return id  # tmp_y -= self.height * 0.001
-
-    # def generate_block(self, x, y, id, cnt):  # 1つブロックを生成する
-    #     pos = np.array((x, y))
-    #     dir = cnt  # 1:左 2:上　3:右　4:下　の方向に避難者に力を与える → 0:左 1:上　2:右　3:下
-    #     wall = Wall(
-    #         id,
-    #         self,
-    #         pos,
-    #         self.wall_r,
-    #         dir,
-    #     )
-    #     self.space.place_agent(wall, pos)
-    #     self.schedule.add(wall)
 
     def check_f_parameter(self):
         count = 0

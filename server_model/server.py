@@ -73,7 +73,7 @@ class InitPosFuncs:
         return np.linalg.norm(pos1 - pos2)
 
 
-def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, for_pop, target_arr,
+def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, for_pop, dests,
                             goal_arr, tmp_seed,len_sq, f_r, f_tau, pos_func, csv_plot):
     ex_num = 1 # force_tau
     # if csv_plot:
@@ -90,7 +90,7 @@ def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, fo
     m = MoveAgent(
         population=pop_num,
         for_population=for_pop,
-        target_arr=target_arr,
+        dests=dests,
         goal_arr=goal_arr,
         v_arg=[1., 1.],
         wall_arr=wall_arr,
@@ -102,7 +102,7 @@ def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, fo
         width=60,  # 見かけの大きさ(マップ)
         height=60,  # 見かけの大きさ(マップ)
         dt=0.3,
-        in_target_d=3,
+        in_dest_d=3,
         vision=1.5,  # 10
         time_step=0,
         add_file_name="",
@@ -119,7 +119,7 @@ if __name__ == '__main__':
     f_tau = float(sys.argv[2])  # 変更する変数の値
     tmp_seed = int(sys.argv[3])  # seed値
     f_r = 0.5 # 強引な避難者の大きさ
-    for_pop = 5  # 強引な避難者の人数 #tmp
+    for_pop = 0  # 強引な避難者の人数 #tmp
     csv_plot = True  # csvファイル(各エージェントの動きの軌跡)を出力するかどうか
     len_sq = 3  # 長方形の一辺の長さはlen_sq*2
     # max_f_r = 1.01
@@ -128,25 +128,17 @@ if __name__ == '__main__':
     forceful_human_var = {"f_m": 80., "f_tau": f_tau, "f_k": 120000.,
                           "f_kappa": 240000., "f_repul_h": [2000., 0.08], "f_repul_m": [2000., 0.08]}
     pos_func = InitPosFuncs()
-    # wall_arr = np.array([[[4., 40.], [54., 40.]],
-    #             [[4., 26.], [16., 26.]],
-    #             [[22., 26.], [54., 26.]],
-    #             [[16., 4.], [16., 26.]],
-    #             [[22., 4.], [22., 26.]]])
-
     wall_arr = np.array([[[2., 40.], [54., 40.]],
                 [[2., 26.], [16., 26.]],
                 [[22., 26.], [54., 26.]],
                 [[16., 4.], [16., 26.]],
                 [[22., 4.], [22., 26.]]])
 
-    # target_arr = [[0, [19., 32.5], 2.], [1, [54., 33.], 2],
-    #               [2, [19., 32.5], 6.], [3, [19., 14.], 2.]]
-    target_arr = [[9, 33], [19, 33], [19, 4], [54, 33]]
+    dests = [[9, 33], [19, 33], [19, 4], [54, 33]]
     goal_arr = [3, 2] # ゴールのインデックス(通常，強引)
     while 1:
         m = make_new_model_instance(
-            human_var, forceful_human_var, wall_arr, pop_num, for_pop, target_arr, goal_arr, tmp_seed, len_sq, f_r, f_tau, pos_func, csv_plot)
+            human_var, forceful_human_var, wall_arr, pop_num, for_pop, dests, goal_arr, tmp_seed, len_sq, f_r, f_tau, pos_func, csv_plot)
         m.running = True
         while m.running:
             m.step()
