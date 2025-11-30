@@ -73,7 +73,7 @@ class InitPosFuncs:
         return np.linalg.norm(pos1 - pos2)
 
 
-def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, for_pop, dests,
+def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, for_pop, dests, edges,
                             goal_arr, tmp_seed,len_sq, f_r, f_tau, pos_func, csv_plot):
     ex_num = 1 # force_tau
     # if csv_plot:
@@ -91,6 +91,7 @@ def make_new_model_instance(human_var, forceful_human_var, wall_arr, pop_num, fo
         population=pop_num,
         for_population=for_pop,
         dests=dests,
+        edges=edges,
         goal_arr=goal_arr,
         v_arg=[1., 1.],
         wall_arr=wall_arr,
@@ -135,10 +136,11 @@ if __name__ == '__main__':
                 [[22., 4.], [22., 26.]]])
 
     dests = [[9, 33], [19, 33], [19, 4], [54, 33]]
+    edges = {0: [1], 1: [0, 2, 3], 2: [1], 3: [1]} # ノードの接続情報
     goal_arr = [3, 2] # ゴールのインデックス(通常，強引)
     while 1:
         m = make_new_model_instance(
-            human_var, forceful_human_var, wall_arr, pop_num, for_pop, dests, goal_arr, tmp_seed, len_sq, f_r, f_tau, pos_func, csv_plot)
+            human_var, forceful_human_var, wall_arr, pop_num, for_pop, dests, edges, goal_arr, tmp_seed, len_sq, f_r, f_tau, pos_func, csv_plot)
         m.running = True
         while m.running:
             m.step()

@@ -8,6 +8,8 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import yaml
+import heapq
+import math
 
 from agent import SharedParams, Human, HumanSpecs, ForcefulHuman, ForcefulHumanSpecs, Wall
 warnings.simplefilter('ignore', UserWarning)
@@ -16,7 +18,7 @@ warnings.simplefilter('ignore', UserWarning)
 class MoveAgent(mesa.Model):
 
     def __init__(
-            self, population=100, for_population=1, dests=[], goal_arr=[], v_arg=[], wall_arr=[[]], seed=1, r=0.5,
+            self, population=100, for_population=1, dests=[], edges=[], goal_arr=[], v_arg=[], wall_arr=[[]], seed=1, r=0.5,
             wall_r=0.5, human_var={}, forceful_human_var={},
             width=100, height=100, dt=0.1,
             in_dest_d=3, vision=3, time_step=0,
@@ -27,6 +29,7 @@ class MoveAgent(mesa.Model):
         self.population = population
         self.for_population = for_population
         self.dests = dests
+        self.edges = edges
         self.goal_arr = goal_arr
         self.v_arg = v_arg
         self.wall_arr = wall_arr
@@ -132,6 +135,9 @@ class MoveAgent(mesa.Model):
         pos_array = []
         human_array = []
         tmp_forceful_num = self.for_population
+        ###　(逆)ダイクストラ法 ###
+        normal_dist_arr = self.decide_route(self.goal_arr[0])
+        ###　(逆)ダイクストラ法 ###
         for i in range(tmp_id, tmp_id + self.population + self.for_population):  # 1人多く作成(強引な人)
             pos = []
             velocity = []
@@ -154,7 +160,21 @@ class MoveAgent(mesa.Model):
             else:  # 通常の人
                 pos = self.pos_func.decide_position(self.r, self.f_r, human_array) #tmp
                 velocity = self.decide_vel()
-                route = copy.copy(self.decide_dest())
+                ### tmp
+                tmp_dis = 999999
+                tmp_idx = 0
+                for a in self.dests:
+                    dis_a = self.space.get_distance(pos, a)
+                    if tmp_dis > dis_a:
+                        tmp_dis = dis_a
+                        tmp_idx = self.dests.index(a)
+                ### tmp(end)
+                ###
+                tmp_dist_arr = copy.copy(normal_dist_arr)
+                tmp_dist_arr2 = copy.copy(self.get_path(tmp_idx, tmp_dist_arr))  # tmp
+                route = tmp_dist_arr2
+                # route = copy.copy(self.decide_dest())
+                # dest = tmp_idx
                 dest = route[0]
                 human = Human(i, self, pos, velocity, dest, route,
                               tmp_div, shared,
@@ -181,8 +201,53 @@ class MoveAgent(mesa.Model):
         tmp_dest.append(self.goal_arr[0]) #tmp
         return tmp_dest
 
-    def decide_route(self):
-        pass
+    def decide_route(self, goal_idx):
+        return self.dijkstra_backward(goal_idx)
+
+    def dijkstra_backward(self, goal_idx):
+        N = len(self.dests)
+        INF = 10**15
+
+        # 目的地を始点にする
+        dist = [INF] * N
+        dist[goal_idx] = 0
+
+        # prev[v] = v の次に進むべきノード（goal へ向かうための一歩）
+        prev = [-1] * N
+
+        pq = [(0, goal_idx)]
+
+        while pq:
+            cost, u = heapq.heappop(pq)
+            if cost > dist[u]:
+                continue
+
+            # すべての辺 u→v を走査する（グラフは無向想定）
+            for v in self.edges[u]:
+                w = self.dist(self.dests[u], self.dests[v])
+                new_cost = cost + w
+
+                if new_cost < dist[v]:
+                    dist[v] = new_cost
+                    prev[v] = u     # goal へ向かう“次のノード”を記録
+                    heapq.heappush(pq, (new_cost, v))
+
+        # return dist, prev
+        return prev
+
+    def get_path(self, start_idx, prev):
+        path = []
+        cur = start_idx
+        while cur != -1:
+            path.append(cur)
+            if prev[cur] == -1:  # goal 到達
+                break
+            cur = prev[cur]
+        return path
+    
+    def dist(self, x, y):
+        """2点のユークリッド距離"""
+        return math.hypot(x[0] - y[0], x[1] - y[1])
     
     def pre_wall_arr(self):
         wall_a = self.wall_arr[:, 0]           # 各壁の始点 (N_wall, 2)
