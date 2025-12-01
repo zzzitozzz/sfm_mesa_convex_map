@@ -136,7 +136,8 @@ class MoveAgent(mesa.Model):
         human_array = []
         tmp_forceful_num = self.for_population
         ###　(逆)ダイクストラ法 ###
-        normal_dist_arr = self.decide_route(self.goal_arr[0])
+        normal_goal_to_dist_arr, normal_goal_to_path = self.decide_route(self.goal_arr[0])
+        print(f"{normal_goal_to_dist_arr=}")
         ###　(逆)ダイクストラ法 ###
         for i in range(tmp_id, tmp_id + self.population + self.for_population):  # 1人多く作成(強引な人)
             pos = []
@@ -160,19 +161,28 @@ class MoveAgent(mesa.Model):
             else:  # 通常の人
                 pos = self.pos_func.decide_position(self.r, self.f_r, human_array) #tmp
                 velocity = self.decide_vel()
-                ### tmp
+                ### tmp(agentの最初の目的地を決める)
                 tmp_dis = 999999
+                tmp_cost = 999999
                 tmp_idx = 0
-                for a in self.dests:
-                    dis_a = self.space.get_distance(pos, a)
-                    if tmp_dis > dis_a:
-                        tmp_dis = dis_a
-                        tmp_idx = self.dests.index(a)
+                # for a in self.dests:
+                #     dis_a = self.space.get_distance(pos, a)
+                #     if tmp_dis > dis_a:
+                #         tmp_dis = dis_a
+                #         tmp_idx = self.dests.index(a)
+                for idx, dis in enumerate(normal_goal_to_dist_arr):
+                    cost_to_goal = dis + self.space.get_distance(pos, self.dests[idx])
+                    if tmp_cost > cost_to_goal:
+                        tmp_cost = cost_to_goal
+                        tmp_idx = idx
+                    
+                    
+
                 ### tmp(end)
                 ###
-                tmp_dist_arr = copy.copy(normal_dist_arr)
-                tmp_dist_arr2 = copy.copy(self.get_path(tmp_idx, tmp_dist_arr))  # tmp
-                route = tmp_dist_arr2
+                tmp_path_arr = copy.copy(normal_goal_to_path)
+                tmp_path_arr2 = copy.copy(self.get_path(tmp_idx, tmp_path_arr))  # tmp
+                route = tmp_path_arr2
                 # route = copy.copy(self.decide_dest())
                 # dest = tmp_idx
                 dest = route[0]
@@ -232,8 +242,7 @@ class MoveAgent(mesa.Model):
                     prev[v] = u     # goal へ向かう“次のノード”を記録
                     heapq.heappush(pq, (new_cost, v))
 
-        # return dist, prev
-        return prev
+        return dist, prev
 
     def get_path(self, start_idx, prev):
         path = []
