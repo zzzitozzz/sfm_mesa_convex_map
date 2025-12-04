@@ -86,10 +86,14 @@ class Human(mesa.Agent):
         return None
 
     def goal_check(self, dest_dis):
-        if dest_dis < 0.5:
+        if dest_dis < 1.5:
             if len(self.route) == self.route_idx + 1:
                 self.in_goal = True
                 self.velocity = [0.0, 0.0]
+        # if dest_dis < 0.5:
+        #     if len(self.route) == self.route_idx + 1:
+        #         self.in_goal = True
+        #         self.velocity = [0.0, 0.0]
             else:
                 self.route_idx += 1
                 return None

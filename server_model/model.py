@@ -137,7 +137,6 @@ class MoveAgent(mesa.Model):
         tmp_forceful_num = self.for_population
         ###　(逆)ダイクストラ法 ###
         normal_goal_to_dist_arr, normal_goal_to_path = self.decide_route(self.goal_arr[0])
-        print(f"{normal_goal_to_dist_arr=}")
         ###　(逆)ダイクストラ法 ###
         for i in range(tmp_id, tmp_id + self.population + self.for_population):  # 1人多く作成(強引な人)
             pos = []
@@ -171,11 +170,14 @@ class MoveAgent(mesa.Model):
                 #         tmp_dis = dis_a
                 #         tmp_idx = self.dests.index(a)
                 for idx, dis in enumerate(normal_goal_to_dist_arr):
+                    if not self.has_line_of_sight(pos, self.dests[idx], self.wall_arr):
+                        continue
                     cost_to_goal = dis + self.space.get_distance(pos, self.dests[idx])
                     if tmp_cost > cost_to_goal:
                         tmp_cost = cost_to_goal
                         tmp_idx = idx
-                    
+
+
                     
 
                 ### tmp(end)
@@ -257,6 +259,20 @@ class MoveAgent(mesa.Model):
     def dist(self, x, y):
         """2点のユークリッド距離"""
         return math.hypot(x[0] - y[0], x[1] - y[1])
+
+    def ccw(self, A, B, C): #"""点 A, B, C が反時計回りかを判定"""
+        return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+    def intersect(self, A, B, C, D):
+        """線分 AB と CD が交差するかを返す"""
+        return (self.ccw(A, C, D) != self.ccw(B, C, D)) and (self.ccw(A, B, C) != self.ccw(A, B, D))
+
+    def has_line_of_sight(self, pos, node_pos, walls):
+        """pos -> node_pos の直線が壁と交差しないかを判定"""
+        for wall in walls:
+            if self.intersect(pos, node_pos, wall[0], wall[1]):
+                return False
+        return True
     
     def pre_wall_arr(self):
         wall_a = self.wall_arr[:, 0]           # 各壁の始点 (N_wall, 2)
@@ -304,7 +320,7 @@ class MoveAgent(mesa.Model):
         if self.time_step % 100 == 0:
             if self.all_agent_evacuate():
                 self.running = False
-        if self.time_step >= 1500:
+        if self.time_step >= 1500: 
             self.timeout_check()
             self.running = False
 
