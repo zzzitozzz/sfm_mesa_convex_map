@@ -56,6 +56,8 @@ class MoveAgent(mesa.Model):
         ###
         self.csv_plot = csv_plot
         shared, human_var_inst, forceful_human_var_inst = self.assign_ini_human_and_forceful_human_var()
+        self.normal_goal_to_dist_arr = []
+        self.normal_goal_to_path = []
         self.dir_parts()
         # self.schedule = mesa.time.RandomActivation(self) #すべてのエージェントをランダムに呼び出し、各エージェントでstep()を一回呼ぶ。step()だけで変更を適用する
         # すべてのエージェントを順番に呼び出し、すべてのエージェントで順番にstep()を一回読んだ後、すべてのエージェントで順番にadvance()を一回呼ぶ。step()で変更を準備し、advance()で変更を適用する
@@ -136,7 +138,7 @@ class MoveAgent(mesa.Model):
         human_array = []
         tmp_forceful_num = self.for_population
         ###　(逆)ダイクストラ法 ###
-        normal_goal_to_dist_arr, normal_goal_to_path = self.decide_route(self.goal_arr[0])
+        self.normal_goal_to_dist_arr, self.normal_goal_to_path = self.decide_route(self.goal_arr[0])
         ###　(逆)ダイクストラ法 ###
         for i in range(tmp_id, tmp_id + self.population + self.for_population):  # 1人多く作成(強引な人)
             pos = []
@@ -160,34 +162,8 @@ class MoveAgent(mesa.Model):
             else:  # 通常の人
                 pos = self.pos_func.decide_position(self.r, self.f_r, human_array) #tmp
                 velocity = self.decide_vel()
-                ### tmp(agentの最初の目的地を決める)
-                tmp_dis = 999999
-                tmp_cost = 999999
-                tmp_idx = 0
-                # for a in self.dests:
-                #     dis_a = self.space.get_distance(pos, a)
-                #     if tmp_dis > dis_a:
-                #         tmp_dis = dis_a
-                #         tmp_idx = self.dests.index(a)
-                for idx, dis in enumerate(normal_goal_to_dist_arr):
-                    if not self.has_line_of_sight(pos, self.dests[idx], self.wall_arr):
-                        continue
-                    cost_to_goal = dis + self.space.get_distance(pos, self.dests[idx])
-                    if tmp_cost > cost_to_goal:
-                        tmp_cost = cost_to_goal
-                        tmp_idx = idx
-
-
-                    
-
-                ### tmp(end)
-                ###
-                tmp_path_arr = copy.copy(normal_goal_to_path)
-                tmp_path_arr2 = copy.copy(self.get_path(tmp_idx, tmp_path_arr))  # tmp
-                route = tmp_path_arr2
-                # route = copy.copy(self.decide_dest())
-                # dest = tmp_idx
-                dest = route[0]
+                route, dest = self.select_first_subgoal(pos)
+                print(f"{i=}{route=},{dest=}") #tmp
                 human = Human(i, self, pos, velocity, dest, route,
                               tmp_div, shared,
                               human_var_inst, self.space,
@@ -273,7 +249,24 @@ class MoveAgent(mesa.Model):
             if self.intersect(pos, node_pos, wall[0], wall[1]):
                 return False
         return True
-    
+
+    def select_first_subgoal(self, pos):
+        tmp_cost = 999999
+        tmp_idx = 0
+        for idx, dis in enumerate(self.normal_goal_to_dist_arr):
+            if not self.has_line_of_sight(pos, self.dests[idx], self.wall_arr):
+                continue
+            cost_to_goal = dis + self.space.get_distance(pos, self.dests[idx])
+            if tmp_cost > cost_to_goal:
+                tmp_cost = cost_to_goal
+                tmp_idx = idx
+        tmp_path_arr = copy.copy(self.normal_goal_to_path)
+        tmp_path_arr2 = copy.copy(self.get_path(tmp_idx, tmp_path_arr))  # tmp
+        route = tmp_path_arr2
+        dest = route[0]
+        return route, dest
+
+
     def pre_wall_arr(self):
         wall_a = self.wall_arr[:, 0]           # 各壁の始点 (N_wall, 2)
         wall_b = self.wall_arr[:, 1]           # 各壁の終点 (N_wall, 2)
