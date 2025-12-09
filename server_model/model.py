@@ -163,7 +163,6 @@ class MoveAgent(mesa.Model):
                 pos = self.pos_func.decide_position(self.r, self.f_r, human_array) #tmp
                 velocity = self.decide_vel()
                 route, dest = self.select_first_subgoal(pos)
-                print(f"{i=}{route=},{dest=}") #tmp
                 human = Human(i, self, pos, velocity, dest, route,
                               tmp_div, shared,
                               human_var_inst, self.space,

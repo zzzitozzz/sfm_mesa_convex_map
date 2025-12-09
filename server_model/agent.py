@@ -26,6 +26,10 @@ class HumanSpecs:
 
 
 class Human(mesa.Agent):
+    STUCK_WINDOW = 10
+    STUCK_DIST = 0.2
+    REROUTE_COOLDOWN = 30  # 再探索後、30ステップは再探索しない
+
     def __init__(self, unique_id, model,
                  pos, velocity,
                  dest, route,
@@ -52,6 +56,7 @@ class Human(mesa.Agent):
         self.pos_array = [] #自分の位置をステップごとに記録する配列
         self.pos_array.append(self.pos)
         self.elapsed_time = elapsed_time #経過時間
+        self.last_reroute_tick = -10**9  # 最後に再探索した時間を保存する変数
 
     @property
     def hspecs(self):
@@ -74,6 +79,7 @@ class Human(mesa.Agent):
         self.pos = copy.deepcopy(self.tmp_pos)
         self.pos_array.append(self.pos)
         self.elapsed_time += self._shared.dt
+        self.re_route()
         if (self.in_goal):  # goalした場合
             path = self.add_file_name
             self.make_dir(path)
@@ -98,6 +104,28 @@ class Human(mesa.Agent):
                 self.route_idx += 1
                 return None
             return None
+        
+    def re_route(self):
+        WINDOW = self.STUCK_WINDOW
+        D_MIN = self.STUCK_DIST
+        COOLDOWN = self.REROUTE_COOLDOWN
+
+        # クールダウン中なら何もしない
+        if self.elapsed_time - self.last_reroute_tick < COOLDOWN * self._shared.dt:
+            return None
+        
+        pos_num = len(self.pos_array)
+        if pos_num < WINDOW + 1:
+            return None
+        
+        cur_pos = self.pos_array[-1]
+        past_pos = self.pos_array[-(WINDOW + 1)]
+        moved = math.dist(cur_pos, past_pos)
+        if moved < D_MIN:
+            self.route, self.dest = self.model.select_first_subgoal(self.pos)
+            self.route_idx = 0
+            self.last_re_route_tick = self.elapsed_time
+        return None
 
     def make_dir(self, path):
         os.makedirs(f"{path}/Data", exist_ok=True)
@@ -260,6 +288,7 @@ class Human(mesa.Agent):
                 print(f"{self.pos=},{self.tmp_pos=}")
             self.tmp_pos = copy.deepcopy(self.pos)
             return False
+
 
 class ForcefulHumanSpecs:
     "_fhspecs:ForcefulHuman-related specs set used in ForcefulHuman"
