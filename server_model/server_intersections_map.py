@@ -26,10 +26,10 @@ class InitPosFuncs:
     #                 break
     #     return pos
 
-    def decide_position(self, r, f_r, human_array):
+    def decide_position(self, rng, r, f_r, human_array):
         while 1:
-            x = np.random.uniform(2.+ r, 156. - r)
-            y = np.random.uniform(2. + r, 100. - r) #初期配置(未確定)
+            x = rng.uniform(2.+ r, 156. - r)
+            y = rng.uniform(2. + r, 100. - r) #初期配置(未確定)
             tmp_pos = np.array((x, y))
             ###tmp
             i = 0
@@ -49,13 +49,11 @@ class InitPosFuncs:
             ### tmp
         return pos
 
-    def decide_forceful_position(self, r, f_r, human_array):
+    def decide_forceful_position(self, rng, r, f_r, human_array):
         len_sq = 3 # 初期エリア：ただし長方形の一辺の長さはlen_sq*2
         while 1:
-            x = np.random.randint(19. - len_sq, 19. +
-                                    len_sq) + np.random.rand()
-            y = np.random.randint(32.5 - len_sq, 32.5 +
-                                    len_sq) + np.random.rand()
+            x = rng.randint(19. - len_sq, 19. + len_sq) + rng.rand()
+            y = rng.randint(32.5 - len_sq, 32.5 + len_sq) + rng.rand()
             if 19.- len_sq + r <= x <= 19.+ len_sq - r and 32.5- len_sq + r <= y <= 32.5+ len_sq - r:
                 tmp_pos = np.array((x, y))
                 if self.forceful_human_pos_check(r, f_r, tmp_pos, human_array):

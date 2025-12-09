@@ -57,6 +57,7 @@ class Human(mesa.Agent):
         self.pos_array.append(self.pos)
         self.elapsed_time = elapsed_time #経過時間
         self.last_reroute_tick = -10**9  # 最後に再探索した時間を保存する変数
+        self.rng = model.make_agent_rng(unique_id) #(将来的に)ランダムな要素を入れるためかもしれないため設定
 
     @property
     def hspecs(self):

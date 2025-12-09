@@ -63,7 +63,7 @@ class MoveAgent(mesa.Model):
         # すべてのエージェントを順番に呼び出し、すべてのエージェントで順番にstep()を一回読んだ後、すべてのエージェントで順番にadvance()を一回呼ぶ。step()で変更を準備し、advance()で変更を適用する
         self.schedule = mesa.time.SimultaneousActivation(self)
         self.space = mesa.space.ContinuousSpace(width, height, True)
-        np.random.seed(self.seed)
+        self.rng = np.random.default_rng(self.seed)
         self.make_agents(shared, human_var_inst, forceful_human_var_inst)
         self.running = True
         print(f"change para: {self.check_f_parameter()}")
@@ -160,7 +160,7 @@ class MoveAgent(mesa.Model):
                 human_array.append(human)
                 tmp_forceful_num -= 1
             else:  # 通常の人
-                pos = self.pos_func.decide_position(self.r, self.f_r, human_array) #tmp
+                pos = self.pos_func.decide_position(self.rng, self.r, self.f_r, human_array) #tmp
                 velocity = self.decide_vel()
                 route, dest = self.select_first_subgoal(pos)
                 human = Human(i, self, pos, velocity, dest, route,
@@ -175,7 +175,9 @@ class MoveAgent(mesa.Model):
 
     def decide_vel(self):
         while 1:
-            velocity = np.random.normal(
+            # velocity = np.random.normal(
+            #     loc=self.v_arg[0], scale=self.v_arg[1], size=2)
+            velocity = self.rng.normal(
                 loc=self.v_arg[0], scale=self.v_arg[1], size=2)
             # 初期速度(および希望速さのx,y成分)は0.5以上1以下
             if 0.5 <= np.linalg.norm(velocity, 2) <= 1.:
@@ -265,7 +267,6 @@ class MoveAgent(mesa.Model):
         dest = route[0]
         return route, dest
 
-
     def pre_wall_arr(self):
         wall_a = self.wall_arr[:, 0]           # 各壁の始点 (N_wall, 2)
         wall_b = self.wall_arr[:, 1]           # 各壁の終点 (N_wall, 2)
@@ -275,6 +276,9 @@ class MoveAgent(mesa.Model):
             wall_ab_len2 = np.append(wall_ab_len2, np.dot(ab, ab))
         return wall_a, wall_b, wall_ab, wall_ab_len2
 
+    def make_agent_rng(self, agent_id):
+        return np.random.default_rng(self.seed + agent_id)
+    
     def check_f_parameter(self):
         count = 0
         if self.m != self.f_m:
