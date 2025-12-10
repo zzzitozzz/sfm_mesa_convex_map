@@ -56,12 +56,14 @@ class MoveAgent(mesa.Model):
         ###
         self.csv_plot = csv_plot
         shared, human_var_inst, forceful_human_var_inst = self.assign_ini_human_and_forceful_human_var()
+        self.normal_goal_to_dist_arr = []
+        self.normal_goal_to_path = []
         self.dir_parts()
         # self.schedule = mesa.time.RandomActivation(self) #すべてのエージェントをランダムに呼び出し、各エージェントでstep()を一回呼ぶ。step()だけで変更を適用する
         # すべてのエージェントを順番に呼び出し、すべてのエージェントで順番にstep()を一回読んだ後、すべてのエージェントで順番にadvance()を一回呼ぶ。step()で変更を準備し、advance()で変更を適用する
         self.schedule = mesa.time.SimultaneousActivation(self)
         self.space = mesa.space.ContinuousSpace(width, height, True)
-        np.random.seed(self.seed)
+        self.rng = np.random.default_rng(self.seed)
         self.make_agents(shared, human_var_inst, forceful_human_var_inst)
         self.running = True
         print(f"change para: {self.check_f_parameter()}")
@@ -136,8 +138,7 @@ class MoveAgent(mesa.Model):
         human_array = []
         tmp_forceful_num = self.for_population
         ###　(逆)ダイクストラ法 ###
-        normal_goal_to_dist_arr, normal_goal_to_path = self.decide_route(self.goal_arr[0])
-        print(f"{normal_goal_to_dist_arr=}")
+        self.normal_goal_to_dist_arr, self.normal_goal_to_path = self.decide_route(self.goal_arr[0])
         ###　(逆)ダイクストラ法 ###
         for i in range(tmp_id, tmp_id + self.population + self.for_population):  # 1人多く作成(強引な人)
             pos = []
@@ -159,33 +160,9 @@ class MoveAgent(mesa.Model):
                 human_array.append(human)
                 tmp_forceful_num -= 1
             else:  # 通常の人
-                pos = self.pos_func.decide_position(self.r, self.f_r, human_array) #tmp
+                pos = self.pos_func.decide_position(self.rng, self.r, self.f_r, human_array) #tmp
                 velocity = self.decide_vel()
-                ### tmp(agentの最初の目的地を決める)
-                tmp_dis = 999999
-                tmp_cost = 999999
-                tmp_idx = 0
-                # for a in self.dests:
-                #     dis_a = self.space.get_distance(pos, a)
-                #     if tmp_dis > dis_a:
-                #         tmp_dis = dis_a
-                #         tmp_idx = self.dests.index(a)
-                for idx, dis in enumerate(normal_goal_to_dist_arr):
-                    cost_to_goal = dis + self.space.get_distance(pos, self.dests[idx])
-                    if tmp_cost > cost_to_goal:
-                        tmp_cost = cost_to_goal
-                        tmp_idx = idx
-                    
-                    
-
-                ### tmp(end)
-                ###
-                tmp_path_arr = copy.copy(normal_goal_to_path)
-                tmp_path_arr2 = copy.copy(self.get_path(tmp_idx, tmp_path_arr))  # tmp
-                route = tmp_path_arr2
-                # route = copy.copy(self.decide_dest())
-                # dest = tmp_idx
-                dest = route[0]
+                route, dest = self.select_first_subgoal(pos)
                 human = Human(i, self, pos, velocity, dest, route,
                               tmp_div, shared,
                               human_var_inst, self.space,
@@ -198,7 +175,9 @@ class MoveAgent(mesa.Model):
 
     def decide_vel(self):
         while 1:
-            velocity = np.random.normal(
+            # velocity = np.random.normal(
+            #     loc=self.v_arg[0], scale=self.v_arg[1], size=2)
+            velocity = self.rng.normal(
                 loc=self.v_arg[0], scale=self.v_arg[1], size=2)
             # 初期速度(および希望速さのx,y成分)は0.5以上1以下
             if 0.5 <= np.linalg.norm(velocity, 2) <= 1.:
@@ -257,7 +236,37 @@ class MoveAgent(mesa.Model):
     def dist(self, x, y):
         """2点のユークリッド距離"""
         return math.hypot(x[0] - y[0], x[1] - y[1])
-    
+
+    def ccw(self, A, B, C): #"""点 A, B, C が反時計回りかを判定"""
+        return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+    def intersect(self, A, B, C, D):
+        """線分 AB と CD が交差するかを返す"""
+        return (self.ccw(A, C, D) != self.ccw(B, C, D)) and (self.ccw(A, B, C) != self.ccw(A, B, D))
+
+    def has_line_of_sight(self, pos, node_pos, walls):
+        """pos -> node_pos の直線が壁と交差しないかを判定"""
+        for wall in walls:
+            if self.intersect(pos, node_pos, wall[0], wall[1]):
+                return False
+        return True
+
+    def select_first_subgoal(self, pos):
+        tmp_cost = 999999
+        tmp_idx = 0
+        for idx, dis in enumerate(self.normal_goal_to_dist_arr):
+            if not self.has_line_of_sight(pos, self.dests[idx], self.wall_arr):
+                continue
+            cost_to_goal = dis + self.space.get_distance(pos, self.dests[idx])
+            if tmp_cost > cost_to_goal:
+                tmp_cost = cost_to_goal
+                tmp_idx = idx
+        tmp_path_arr = copy.copy(self.normal_goal_to_path)
+        tmp_path_arr2 = copy.copy(self.get_path(tmp_idx, tmp_path_arr))  # tmp
+        route = tmp_path_arr2
+        dest = route[0]
+        return route, dest
+
     def pre_wall_arr(self):
         wall_a = self.wall_arr[:, 0]           # 各壁の始点 (N_wall, 2)
         wall_b = self.wall_arr[:, 1]           # 各壁の終点 (N_wall, 2)
@@ -267,6 +276,9 @@ class MoveAgent(mesa.Model):
             wall_ab_len2 = np.append(wall_ab_len2, np.dot(ab, ab))
         return wall_a, wall_b, wall_ab, wall_ab_len2
 
+    def make_agent_rng(self, agent_id):
+        return np.random.default_rng(self.seed + agent_id)
+    
     def check_f_parameter(self):
         count = 0
         if self.m != self.f_m:
@@ -304,7 +316,7 @@ class MoveAgent(mesa.Model):
         if self.time_step % 100 == 0:
             if self.all_agent_evacuate():
                 self.running = False
-        if self.time_step >= 1500:
+        if self.time_step >= 1500: 
             self.timeout_check()
             self.running = False
 
